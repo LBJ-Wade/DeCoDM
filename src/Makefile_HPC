@@ -1,0 +1,64 @@
+CXX=g++
+# Declaration of variables
+CC = icpc
+CC_FLAGS = -O3 -Wall -xAVX -ip  
+#-I../cosmomc/source
+
+#TARGET_DIR = /home/ppxbk2/astroraid/cosmomc/source
+TARGET_DIR = ../test
+
+TARGET_GENERATE = ..
+
+LIB_GSL = -lm -lstdc++ -lgsl -lgslcblas
+PATH_LIB_GSL = /usr/gsl/lib64
+INC_GSL = /usr/include/gsl
+
+INC_HEADERS = ../include
+
+LIBS =  -L$(PATH_LIB_GSL)
+LD_FLAGS = $(LIB_GSL)
+INCLUDE = -I$(INC_GSL) -I$(INC_HEADERS)
+
+# File names
+EXEC = run
+SOURCES = $(*.cc)
+OBJECTS = $(SOURCES:.cc=.o)
+
+OBJ_FILES =  DMUtils.o Detector_Class.o  Event_Class.o Parametrisations.o EventRates.o
+HEADER_FILES = $(OBJ_FILES:.o=.h)
+#Main Target
+
+all: GenerateEvents CalcLikelihood Lib clean
+
+#NB: Check ordering of library flags...
+
+Lib: libdecodm.a
+
+%.o: %.cc
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -c $^ $(LD_FLAGS)
+
+GenerateEvents: GenerateEvents.o $(OBJ_FILES)
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o $@ $^ $(LD_FLAGS)
+	cp GenerateEvents $(TARGET_GENERATE)
+	rm GenerateEvents
+
+
+CalcLikelihood: CalcLikelihood.cc $(OBJ_FILES)
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -c $< $(LD_FLAGS)
+	cp *.o $(TARGET_DIR)
+
+libdecodm.a: CalcLikelihood $(OBJ_FILES)
+	ar rv ../$@ CalcLikelihood.o $(OBJ_FILES)
+
+clean:
+	rm *.o
+
+uninstall:
+	rm $(TARGET_GENERATE)GenerateEvents
+	rm ../libdecodm.a
+
+
+
+#   $@ name of the target
+#   $^ name of all prerequisites with duplicates removed
+#   $< name of the first prerequisite
