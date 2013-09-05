@@ -13,16 +13,14 @@ LIB_GSL = -lm -lstdc++ -lgsl -lgslcblas
 PATH_LIB_GSL = /usr/gsl/lib64
 INC_GSL = /usr/include/gsl
 
+
 INC_HEADERS = ../include
 
-LIB_LAPACK = -llapack -lblas
-PATH_LIB_LAPACK = /home/ppxbk2/lapack-3.2
+LIB_DS = -lifcore -lifport -ldarksusy -lHB -lFH -lisajet
+PATH_LIB_DS = /home/ppxbk2/darksusy-5.1.1/lib/
 
-LIB_DS = -ldarksusy -lHB -lFH -lisajet -lifcore -lifort
-PATH_LIB_DS = /home/ppxbk2/DarkSUSY/darksusy-5.1.1/lib
-
-LIBS =  -L$(PATH_LIB_GSL) -L$(PATH_LIB_LAPACK) -L$(PATH_LIB_DS)
-LD_FLAGS = $(LIB_GSL) $(LIB_LAPACK) $(LIB_DS)
+LIBS =  -L$(PATH_LIB_GSL) -L$(PATH_LIB_DS)
+LD_FLAGS = $(LIB_GSL) $(LIB_DS)
 INCLUDE = -I$(INC_GSL) -I$(INC_HEADERS)
 
 # File names
