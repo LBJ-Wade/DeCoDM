@@ -1,0 +1,193 @@
+
+\documentclass[a4paper]{article}
+
+\usepackage{paralist}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{color}
+\usepackage{nicefrac}
+\usepackage{graphicx}
+\usepackage{subfig}
+\newcommand{\kms}{\ensuremath{\,\textrm{km s}^{-1}}}
+\newcommand{\Emin}{E_{\textrm{min}}}
+\newcommand{\Emax}{E_{\textrm{max}}}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{fullpage}
+\usepackage{enumitem}
+
+
+\usepackage{listings}
+\lstset{language=C}
+
+\lstdefinestyle{BashInputStyle}{
+  language=bash,
+  basicstyle=\small\sffamily,
+  numbersep=3pt,
+  columns=fullflexible,
+  linewidth=0.9\linewidth,
+  xleftmargin=0.1\linewidth
+}
+
+\begin{document}
+
+\section{Introduction}
+
+\section{Code Summary}
+
+\subsection{DMUtils}
+
+This module is contained in the file \texttt{DMUtils.h}, and contains the following procedures.
+
+\begin{lstlisting}
+double reduced_m(double m_n, double m_x)
+\end{lstlisting}
+\begin{quote}
+Returns the reduced mass \(\mu_{\chi N} = m_N m_\chi /(m_N + m_\chi)\) (in kg) for a nucleus of atomic mass number \texttt{m\_n} and a WIMP of mass \texttt{m\_x} (in GeV).
+\end{quote}
+
+\begin{lstlisting}
+double helm_FF(double E, double m_n)
+\end{lstlisting}
+\begin{quote}
+Returns the Helm Form Factor (squared) for a recoil of energy \texttt{E} (in keV) and a nucleus of atomic mass number \texttt{m\_n}.
+\end{quote}
+
+\begin{lstlisting}
+double rate_prefactor(double m_n, double m_x, double sigma, double rho)
+\end{lstlisting}
+\begin{quote}
+Returns the prefactor, \(R\), appearing in the differential event rate for \textbf{directional} direct detection:
+\begin{equation*}
+R = \frac{\rho_0 \sigma_p}{4\pi m_\chi \mu^2_{\chi N}}A^2\,.
+\end{equation*}
+Accepts as arguments the WIMP mass \texttt{m\_x} (in GeV), the atomic mass of the target nucleus \texttt{m\_n}, the WIMP-proton cross-section \texttt{sigma} (in cm\(^{2}\)) and the local DM density \texttt{rho} (in GeV cm\(^{-3}\)). \(R\) is returned in units of Events/kg/keV/day.
+\end{quote}
+
+
+\begin{lstlisting}
+double v_min(double E, double m_n, double m_x)
+\end{lstlisting}
+\begin{quote}
+Returns the minimum velocity (in \(\kms\)) required to excite a nuclear recoil of energy E (in keV).
+\end{quote}
+
+\begin{lstlisting}
+double v_min_inverse(double v, double m_n, double m_x)
+\end{lstlisting}
+
+\begin{quote}
+Returns the inverse of \texttt{v\_min} - i.e. the energy E (in keV) for which \(v_\textrm{min} = \texttt{v}\) (in \(\kms\)).
+\end{quote}
+
+\begin{lstlisting}
+double N_expected(double rate (double,void*), void * params)
+\end{lstlisting}
+
+\begin{quote}
+Returns \(N_e\) the expected number of events in a detector based on the generic \texttt{rate} function (in Events/keV) with theoretical parameters \texttt{params}. \textcolor{red}{Currently doesn't have a good way of dealing with varying \textit{experimental} parameters.}
+\end{quote}
+
+\begin{lstlisting}
+int load_params(std::string filename)
+\end{lstlisting}
+
+\begin{quote}
+Loads global parameter value stored in \texttt{filename}. The parameters should be stored in the file on separate lines, with the parameter name and value separated by a tab. Parameters include: \texttt{rho\_0}.
+\end{quote}
+
+
+\section{DirectionalEvent}
+
+This module is contained in the file \texttt{DirectionalEvent.cc}, and contains the following procedures.
+
+
+\begin{lstlisting}
+double diffRate (double v, double theta, double phi, double m_n, double m_x)
+\end{lstlisting}
+Calculates the differential event rate...
+
+\section{Executables and Parameter files}
+
+\subsection{GenerateEvents}
+
+This program generates direct detection events for detectors specified in \texttt{params.ini} using a distribution function specified in \texttt{dist.txt}. The program is executed as follows:
+
+\begin{lstlisting}[style=BashInputStyle]
+    $ ./GenerateEvents MASS SIGMA_SI SIGMA_SD
+\end{lstlisting}
+where the input parameters are the WIMP mass in GeV (\texttt{MASS}) and the spin-independent/spin-dependent WIMP-proton cross-sections in $\textrm{cm}^2$ (\texttt{SIGMA\_SI}/\texttt{SIGMA\_SD}). The input WIMP velocity distribution should be specified in the file \texttt{dist.txt} in the same folder as \texttt{GenerateEvents}. This is specified as follows:
+
+\begin{lstlisting}
+    N_dist	2
+
+    fraction1	0.7
+    v_lag1	0 0 230
+    sigma_v1	156
+
+    fraction2	0.3
+    v_lag2	0 0 50
+    sigma_v2	50
+
+    ...
+\end{lstlisting}
+where \texttt{N\_dist} is the number of distinct Maxwell-Boltzmann-type distribution contributing and \texttt{fractionN} is the fractional contribution of the $N^{th}$ distribution. The speed parameters of the $N^{th}$ distribution are then specified using \texttt{sigma\_vN}, the 1-D velocity dispersion in \kms, and \texttt{v\_lagN}, the x, y and z components of the lag velocity in \kms.
+
+\subsection{Initialisation parameters}
+
+The initialisation parameters are stored in a file \texttt{params.ini} which should be placed in the same directory as the executable code. These parameters consist of specifiers for both data generation and parameter reconstruction. However, not all parameters are used in both cases. [***DEFAULTS? FORMATS?***] The parameters are described below:
+
+\begin{description}[font=\ttfamily, parsep=0pt, labelindent=\parindent]
+\item[N\_expt -] The number of experiments to be used (each experiment should have an appropriate \texttt{Experiment\#.txt})
+
+\item[expt\_folder -] Directory containing the experimental parameter files (one for each experiment)
+
+\item[events\_folder -] Directory containing the events files for each experimental
+
+\item[N\_dist -] Number of distinct Maxwell-Boltzmann velocity distributions which contribution to the full distribution
+
+\item[mode -] Reconstruction mode, specifying what velocity parameters should be used in the reconstruction (see Sec.~\ref{sec:ReconModes})
+
+\item[dir - ] Use directional data in reconstruction? (1 - Yes; 0 - No) \textbf{Note:} This is not yet guaranteed to work in the code for all reconstruction modes. Eventually, this option should be set on an experiment-by-experiment basis.
+
+\item[USE\_SI -] Include spin-independent (SI) interactions? (1 - Yes; 0 - No)
+
+\item[USE\_SD -] Include spin-dependent (SD) interactions? (1 - Yes; 0 - No)
+
+\item[USE\_FLOAT\_BG -] Reconstruct using a floating background level for each experiment (1 - Yes; 0 - No)
+
+\item[USE\_BINNED\_DATA -] Use binned likelihood function and binned data in reconstruction (1 - Yes; 0 - No)
+
+\item[USE\_ASIMOV\_DATA -] Use binned likelihood function and binned Asimov data in reconstruction (1 - Yes; 0 - No)
+
+\end{description}
+
+\subsection{Experimental Parameters}
+
+The parameters for each experiment are stored in numbered experiment files - \texttt{Experiment1.txt}, \texttt{Experiment2.txt}, etc. - in the folder \texttt{expt\_folder} specified in \texttt{params.ini}. The possible experimental parameters are described below:
+
+\begin{description}[font=\ttfamily, parsep=0pt,labelindent=\parindent]
+
+\item[m\_n -] The nuclear mass of the target nucleus (in atomic mass units)
+
+\item[m\_det -] Total fiducial mass of detector (in kg)
+
+\item[exposure -] Total exposure time (in days), incorporating detector efficiency and data cuts
+
+\item[E\_min -] Lower energy threshold of experiment (in keV)
+
+\item[E\_max -] Upper energy limit of experiment (in keV)
+
+\item[BG\_level -] (Flat) Background event rate (in events/kg/day/keV)
+
+\item[dE -] Gaussian width of detector energy resolution (in keV)
+
+\item[USE\_BINNED\_DATA -] Calculate binned data? (1 - Yes; 0 - No)
+
+\item[bin\_width -] Width of energy bins for binned data (in keV)
+
+\item[SPIN PARAMETERS -]
+
+\end{description}
+
+\end{document}
