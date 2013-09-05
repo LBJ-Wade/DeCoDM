@@ -221,6 +221,8 @@ double spreadRate(double E, void* params)
 
 }
 
+//--------------------------Preconvolved Rate is currently not being used in the binned likelihood...------------------------
+
 double preConvolvedRate(double E, void* params)
 {
   Detector* expt = ((ParamSet*)params)->exptParams;

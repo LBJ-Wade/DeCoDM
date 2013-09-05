@@ -193,13 +193,9 @@ void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
 
     for (int i = 0; i < expt->N_Ebins; i++)
     {
-	expt->E_min = expt->bin_edges[i];
-	expt->E_max = expt->bin_edges[i+1];
-
       //Calculate number of expected and observed events
-      double Ne = expt->m_det*expt->exposure*(N_expected(&maxwell, parameters));
+      double Ne = expt->m_det*expt->exposure*(N_expected(&maxwell, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
       expt->asimov_data[i] += Ne;
-
     }
 }
 
@@ -212,20 +208,14 @@ void generateBGEvents_Asimov(Detector* expt)
 
     for (int i = 0; i < expt->N_Ebins; i++)
     {
-	expt->E_min = expt->bin_edges[i];
-	expt->E_max = expt->bin_edges[i+1];
-
       //Calculate number of expected and observed events
-      double Ne = expt->m_det*expt->exposure*(N_expected(&BGRate, parameters));
+      double Ne = expt->m_det*expt->exposure*(N_expected(&BGRate, parameters, expt->bin_edges[i], expt->bin_edges[i+1]));
       expt->asimov_data[i] += Ne;
     }
 }
 
 double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v)
 {
-  expt->E_min = expt->E_min_total;
-  expt->E_max = expt->E_max_total;
-
     //Arrange parameters in an array
     double params[7];
 
@@ -289,8 +279,6 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
 
 double generateBGEvents(Detector* expt)
 {
-  expt->E_min = expt->E_min_total;
-  expt->E_max = expt->E_max_total;
 
   //std::cout << expt->E_min << "\t" << expt->E_max << std::endl;
   ParamSet parameters(expt,NULL);

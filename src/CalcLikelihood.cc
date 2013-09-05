@@ -466,9 +466,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   return LL;
 }
 
-//Put this in the Detector Class --------------------------<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-
 
 
 
@@ -532,22 +529,18 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	  {
 	   for (int i = 0; i < expt->N_Ebins; i++)
 	   {
-	     //Set bin edges for integration
-	     expt->E_min = expt->bin_edges[i];
-	     expt->E_max = expt->bin_edges[i+1];
-
 	     double No_bin = 0;
 
 	     if (USE_ASIMOV_DATA)
 	     {
-	       No_bin = expt->asimov_data[i];
+		No_bin = expt->asimov_data[i];
 	     }
 	     else
 	     {
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &maxwell, No_bin);
+	     PL += PoissonLike(expt, parameters, &maxwell, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
 	  }
@@ -782,9 +775,6 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	   for (int i = 0; i < expt->N_Ebins; i++)
 	   {
 	     double No_bin = 0;
-	     //Set bin edges for integration
-	     expt->E_min = expt->bin_edges[i];
-	     expt->E_max = expt->bin_edges[i+1];
 
 	     if (USE_ASIMOV_DATA)
 	     {
@@ -795,7 +785,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &isotropicRatePoly, No_bin);
+	     PL += PoissonLike(expt, parameters, &isotropicRatePoly, No_bin,expt->bin_edges[i], expt->bin_edges[i+1] );
 
 	   }
 	  }

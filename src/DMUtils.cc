@@ -96,6 +96,61 @@ double N_expected(double rate (double,void*), ParamSet parameters)
   return result;
 }
 
+double N_expected(double rate (double,void*), ParamSet parameters, double E1, double E2)
+{
+  currentRate = rate;
+  //Calculates the total number of expected events
+  //using a generic differential event rate ('rate')
+
+  //Declare gsl workspace (1000 subintervals)
+  gsl_integration_workspace * workspace
+         = gsl_integration_workspace_alloc (5000);
+
+	 Detector* expt = parameters.exptParams;
+	 double deltaE = expt->dE;
+
+  //switch off default error handler, store old error handler in
+  //old_handler
+  gsl_error_handler_t * old_handler=gsl_set_error_handler_off();
+
+  //Declare gsl function to be integrated
+  gsl_function F;
+
+
+  F.params = &parameters;
+
+  double result, error;
+  int status;
+  if (deltaE < 1e-3)
+  {
+    F.function = currentRate;
+
+    status = gsl_integration_qag(&F,E1,E2, 0.1, 0, 5000,6,
+                             workspace, &result, &error);
+  }
+  else
+  {
+    F.function = convolvedRate;
+
+   status = gsl_integration_qag(&F,E1,E2, 0.1, 0, 5000,6,
+                             workspace, &result, &error);
+  }
+
+
+  if (status ==  GSL_EROUND)
+  {
+    result = 0;
+    std::cout << "GSL rounding error!" << std::endl;
+  //std::cout << result << std::endl;
+  }
+
+  //Free workspace
+  gsl_integration_workspace_free (workspace);
+
+  //Return result of integration
+  return result;
+}
+
 
 double rate_prefactor(double m_n, double m_x, double sigma, double rho)
 {
@@ -201,13 +256,13 @@ double u_max(double v, double m_n, double m_x)
 }
 
 
-double PoissonLike(Detector* expt, ParamSet parameters, double signal_rate (double,void*), double No)
+double PoissonLike(Detector* expt, ParamSet parameters, double signal_rate (double,void*), double No, double E1, double E2)
 {
     //Returns -ln of the poisson likelihood of observing No events when Ne are expected
 
   //Calculate expected numbers of events
-  double Ne = (expt->m_det)*(expt->exposure)*N_expected(signal_rate, parameters);
-  double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
+  double Ne = (expt->m_det)*(expt->exposure)*N_expected(signal_rate, parameters, E1, E2);
+  double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate,parameters, E1, E2);
 
   double Ne_tot = Ne+Ne_BG;
 

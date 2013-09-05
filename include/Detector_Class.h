@@ -15,8 +15,6 @@ class Detector
     double E_min;
     double E_max;
 
-    double E_min_total;
-    double E_max_total;
 
     //Spin parameters
     double Sn;

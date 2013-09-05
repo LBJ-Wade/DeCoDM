@@ -57,13 +57,6 @@ Detector::Detector(std::string filename)
 	E += bin_width;
    }
 
-    E_min_total = E_min;
-    E_max_total = E_max;
-
-    std::cout << "-------------------------------------------------------------------" << std::endl;
-    std::cout << "----NB: Need to recode N_exp to accept E_min and E_max----------" << std::endl;
-    std::cout << "-------------------------------------------------------------------" << std::endl;
-
     N_Ebins = bin_edges.size() -1;
     binned_data.clear();
     binned_data.resize(N_Ebins,0);
@@ -83,7 +76,6 @@ Detector::Detector(std::string filename)
 //Count data in each bin
 double Detector::bin_data()
 {
-  std::cout << data.size() << std::endl;
    for (int i = 0; i < data.size(); i++)
    {
       int j = 0;

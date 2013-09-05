@@ -26,12 +26,13 @@ double u_max(double v, double m_n, double m_x);
 double v_min_inverse(double v, double m_n, double m_x);
 
 double N_expected(double rate (double,void*), ParamSet parameters);
+double N_expected(double rate (double,void*), ParamSet parameters, double E1, double E2);
 
 double sphericalHarmonic(int l, int m, double theta, double phi);
 
 double logfactNo(double No);
 
-double PoissonLike(Detector* expt, ParamSet parameters, double signal_rate (double,void*), double No);
+double PoissonLike(Detector* expt, ParamSet parameters, double signal_rate (double,void*), double No, double E1, double E2);
 double signal_fraction(Detector* expt, ParamSet parameters, double signal_rate (double, void*));
 
 //Routines for reading in parameters from files
