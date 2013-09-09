@@ -98,6 +98,19 @@ int main(int argc, char *argv[])
   }
 
 
+  //Write a file explaining what inputs were used
+  std::ofstream file("input.txt");
+  if (file.is_open())
+    {
+      file << "m_x/GeV\t" << m_x << std::endl;
+      file << "sigma_SI/cm^2\t" << sigma_SI << std::endl;
+      file << "sigma_SD/cm^2\t" << sigma_SD << std::endl;
+
+      file.close();
+    }
+  else std::cout << "Unable to open file input.txt" << std::endl;
+
+
   //free(experiments);
 
    gsl_rng_free (r);
