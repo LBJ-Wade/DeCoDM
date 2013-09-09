@@ -578,7 +578,6 @@ double multipoleRadon(double v_q, int l, double integrand (double,void*), double
 
   //Not sure about this bit...
 
-
   //-------------------------------------------------------This bit will need editing depending on whether it's 1-D or 3-D------------------------
   full_params[2] = malloc(N_terms*sizeof(double));
 
@@ -704,6 +703,8 @@ double backwardIntegrandPoly(double v, void* params)
 
   return (1 - asin(sqrt(1-beta*beta))*beta/(sqrt(1-beta*beta)))*v*fv;
 }
+
+
 
 //Do this more generically???
 double multipoleIntegrand(double v, void* params)
@@ -865,4 +866,149 @@ double BGRate(double E, void* params)
  return rate;
 
 }
+
+//Returns the unnormalised Lisanti et al directionally averaged speed distribution
+double Lisanti_f(double v, void* params)
+{
+ double v0 = ((double*)params)[0];
+ double v_esc = ((double*)params)[1];
+ int k = round(((double*)params)[2]);
+
+ //if (v > 0.5*(sqrt(4*v_esc*v_esc - 3*v0*v0) - v0)) return 0;
+ //if (v > (v_esc + v0)) return 0;
+
+
+ double tot = 0;
+
+ double A = v_esc*v_esc - v*v - v0*v0;
+ double B = v0*v;
+ double C = k*v0*v0;
+
+ for (int i = 0; i < k; i++)
+ {
+  tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - exp((k-i)*(A-B)/C));
+  //std::cout << tot << std::endl;
+ }
+ tot += 2*pow(-1,k);
+
+ if (tot < 0) return 0;
+
+ //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
+
+ //return v*v*pow((exp((v_esc*v_esc - v*v)/(k*v0*v0))-1),k);
+ return v*v*tot;
+}
+
+double LisantiIntegrand(double v, void* params)
+{
+  void** p = static_cast<void**>(params);
+  double* parameters = *((double**)p[2]);
+
+  double v0 = ((double*)parameters)[0];
+  double v_esc = ((double*)parameters)[1];
+  int k = round(((double*)parameters)[2]);
+
+  //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
+
+
+
+
+    //if (v > 0.5*(sqrt(4*v_esc*v_esc - 3*v0*v0) - v0)) return 0;
+  //if (v > (v_esc + v0)) return 0;
+
+
+  double tot = 0;
+
+  double A = v_esc*v_esc - v*v - v0*v0;
+  double B = v0*v;
+  double C = k*v0*v0;
+
+  for (int i = 0; i < k; i++)
+  {
+    tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - exp((k-i)*(A-B)/C));
+  }
+  tot += 2*pow(-1,k);
+
+ if (tot < 0) return 0;
+ //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
+
+ //return v*v*pow((exp((v_esc*v_esc - v*v)/(k*v0*v0))-1),k);
+ return v*tot/(2*PI);
+}
+
+//Returns the norm of the Lisanti distribution (i.e. the integral over all speeds)
+double Lisanti_norm(void* params)
+{
+  double v_esc = ((double*)params)[1];
+
+
+  //Declare gsl workspace (5000 subintervals)
+  gsl_integration_workspace * workspace
+         = gsl_integration_workspace_alloc (5000);
+
+  //Declare gsl function to be integrated
+  gsl_function F;
+  F.function = &Lisanti_f;
+
+  F.params = params;
+
+  double result, error;
+
+    int status = gsl_integration_qag(&F,0,v_max, 0, 1e-6, 5000,6,
+                             workspace, &result, &error);
+
+			     //if (result < 0) std::cout << "Negative rate!" << std::endl;
+
+  if (status ==  GSL_EROUND)
+  {
+  //result = 0;
+  std::cout << "GSL rounding error!" << std::endl;
+  std::cout << result << std::endl;
+  }
+
+  //Free workspace
+  gsl_integration_workspace_free (workspace);
+
+  return result;
+}
+
+
+//Returns the UNNORMALISED rate based on a Lisanti speed distribution
+double LisantiRate(double E, void* params)
+{
+  Detector* expt = ((ParamSet*)params)->exptParams;
+    double* parameters = ((ParamSet*)params)->theoryParams;
+
+
+
+  double m_n = expt->m_n;
+
+  double m_x = pow(10,parameters[0]);
+  double sigma_SI = pow(10,parameters[1]);
+  double sigma_SD = pow(10,parameters[2]);
+
+
+  double velParams[3];
+  velParams[0] = parameters[3];
+  velParams[1] = parameters[4];
+  velParams[2] = parameters[5];
+
+
+  //double v = (reduced_m(40,m_x))*p_min(E,m_n)/(reduced_m(m_n,m_x));
+  double v = v_min(E,m_n,m_x);
+
+
+   double vel_integral = multipoleRadon(v, 0, &LisantiIntegrand, velParams);
+
+
+    double int_factor = 0;
+   if (USE_SD)    int_factor += sigma_SD*expt->SD_formfactor(E)*expt->SD_enhancement();
+   if (USE_SI)    int_factor += sigma_SI*expt->SI_formfactor(E)*expt->SI_enhancement();
+
+   //std::cout << sigma_SI << std::endl;
+
+  return rate_prefactor(m_n, m_x, 1, 0.3)*int_factor*vel_integral;
+
+}
+
 

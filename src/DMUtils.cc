@@ -322,6 +322,15 @@ double logfactNo(double No)
   return 0;
 }
 
+int nCr(int n, int r)
+{
+  //Recursive formula for binomial coefficients
+  if (r == 0) return 1;
+  if (n == r) return 1;
+  return nCr(n-1,r-1) + nCr(n-1,r);
+}
+
+
 //--------------------------------------------------
 //---------------File I/O Utilities-----------------
 //--------------------------------------------------

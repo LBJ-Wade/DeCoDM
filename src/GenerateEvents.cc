@@ -30,9 +30,12 @@ void generateEvents(Detector* expt,double m_x, double sigma_SI, double sigma_SD)
 void printEvents(std::vector<Event> data, std::string filename);
 
 double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v);
-double generateBGEvents(Detector* expt);
-
 void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v);
+
+double generateLisantiEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k);
+void generateLisantiEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k);
+
+double generateBGEvents(Detector* expt);
 void generateBGEvents_Asimov(Detector* expt);
 
 void calcRotationMatrix(double* rot_matrix, double* v_lag);
@@ -126,10 +129,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 {
   //Generate events and store as a vector in data
 
- int N_dist;
- double fraction;
- double sigma_v;
- double v_lag[3];
+ std::string dist_type;
 
  char numstr[21]; // enough to hold all numbers up to 64-bits
 
@@ -137,23 +137,63 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
  double Ne_BG = 0;
 
 
+
  //Open file for reading in distribution parameters
   std::ifstream file ("dist.txt");
   if (file.is_open())
   {
-    //Read in parameter values
-    N_dist = read_param_int(&file, "N_dist");
 
-    for (int i = 0; i < N_dist; i++)
+    dist_type = read_param_string(&file, "dist_type");
+
+
+    if (dist_type == "maxwell")
     {
-      sprintf(numstr, "%d", i+1);
-      fraction = read_param_double(&file, "fraction"+std::string(numstr));
-      read_param_vector(&file, "v_lag"+std::string(numstr),v_lag);
-      sigma_v = read_param_double(&file, "sigma_v" + std::string(numstr));
-      //std::cout << sigma_v << '\t' << v_lag[2] << std::endl;
-      generateMaxwellEvents_Asimov(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v);
-      Ne += generateMaxwellEvents(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v);
+      std::cout << "Using 'maxwell' type distribution..." << std::endl;
 
+      //Distribution parameters for 'maxwell'
+      int N_dist;
+      double fraction;
+      double sigma_v;
+      double v_lag[3];
+
+
+      //Read in parameter values
+      N_dist = read_param_int(&file, "N_dist");
+
+      for (int i = 0; i < N_dist; i++)
+      {
+	sprintf(numstr, "%d", i+1);
+	fraction = read_param_double(&file, "fraction"+std::string(numstr));
+	read_param_vector(&file, "v_lag"+std::string(numstr),v_lag);
+	sigma_v = read_param_double(&file, "sigma_v" + std::string(numstr));
+	//std::cout << sigma_v << '\t' << v_lag[2] << std::endl;
+	Ne += generateMaxwellEvents(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v);
+	generateMaxwellEvents_Asimov(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v);
+
+      }
+    }
+    else if (dist_type == "lisanti")
+    {
+      std::cout << "Using 'lisanti' type distribution..." << std::endl;
+
+      //Distribution parameters for 'lisanti'
+      double v0;
+      double v_esc;
+      double k;
+
+      //Read in parameter values
+      v0 = read_param_double(&file, "v0");
+      v_esc = read_param_double(&file, "v_esc");
+      k = read_param_double(&file, "k");
+
+      Ne = generateLisantiEvents(expt, m_x, sigma_SI, sigma_SD, v0, v_esc, k);
+      generateLisantiEvents_Asimov(expt, m_x, sigma_SI, sigma_SD, v0, v_esc, k);
+
+    }
+    else
+    {
+     std::cout << "dist_type '" <<  dist_type << "' is not valid. Exiting..." << std::endl;
+     exit (EXIT_FAILURE);
     }
 
     //Display signal event numbers
@@ -179,52 +219,6 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
 
 
-}
-
-void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v)
-{
-  //Only works with energies at the minute
-
-  //Arrange parameters in an array
-    double params[7];
-
-    //Theoretical parameters
-    params[0] = log10(m_x);
-    params[1] = log10(sigma_SI);
-    params[2] = log10(sigma_SD);
-    params[3] = v_lag[0];
-    params[4] = v_lag[1];
-    params[5] = v_lag[2];
-    params[6] = sigma_v;
-
-    //Calculate v_lag_length
-    double v_lag_length = sqrt(pow(v_lag[0],2) + pow(v_lag[1],2) + pow(v_lag[2],2));
-
-    ParamSet parameters(expt,params);
-
-    double Ne_total = 0;
-
-    for (int i = 0; i < expt->N_Ebins; i++)
-    {
-      //Calculate number of expected and observed events
-      double Ne = expt->m_det*expt->exposure*(N_expected(&maxwell, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
-      expt->asimov_data[i] += Ne;
-    }
-}
-
-void generateBGEvents_Asimov(Detector* expt)
-{
-  ParamSet parameters(expt,NULL);
-  setCurrentRate(&BGRate);
-
-  double Ne_total = 0;
-
-    for (int i = 0; i < expt->N_Ebins; i++)
-    {
-      //Calculate number of expected and observed events
-      double Ne = expt->m_det*expt->exposure*(N_expected(&BGRate, parameters, expt->bin_edges[i], expt->bin_edges[i+1]));
-      expt->asimov_data[i] += Ne;
-    }
 }
 
 double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v)
@@ -290,6 +284,135 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
     return Ne;
 }
 
+
+void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v)
+{
+  //Only works with energies at the minute
+
+  //Arrange parameters in an array
+    double params[7];
+
+    //Theoretical parameters
+    params[0] = log10(m_x);
+    params[1] = log10(sigma_SI);
+    params[2] = log10(sigma_SD);
+    params[3] = v_lag[0];
+    params[4] = v_lag[1];
+    params[5] = v_lag[2];
+    params[6] = sigma_v;
+
+
+    ParamSet parameters(expt,params);
+
+    for (int i = 0; i < expt->N_Ebins; i++)
+    {
+      //Calculate number of expected and observed events
+      double Ne = expt->m_det*expt->exposure*(N_expected(&maxwell, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
+      expt->asimov_data[i] += Ne;
+    }
+}
+
+
+
+double generateLisantiEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k)
+{
+    //Arrange parameters in an array
+    double params[6];
+
+    //Theoretical parameters
+    params[0] = log10(m_x);
+    params[1] = log10(sigma_SI);
+    params[2] = log10(sigma_SD);
+    params[3] = v0;
+    params[4] = v_esc;
+    params[5] = k;
+
+
+    ParamSet parameters(expt,params);
+
+    std::cout << "------NB: Lisanti directional data is not accurate -------------" << std::endl;
+
+
+
+    double Norm = 0;
+
+     double velParams[3];
+     velParams[0] = params[3];
+     velParams[1] = params[4];
+     velParams[2] = params[5];
+
+     Norm = Lisanti_norm(velParams);
+
+    //Calculate number of expected and observed events
+    double Ne = expt->m_det*expt->exposure*(N_expected(&LisantiRate, parameters))/Norm;
+    int No = gsl_ran_poisson(r,Ne);
+
+
+    setCurrentRate(&LisantiRate);
+
+
+    for (int N = 0; N < No; )
+    {
+      double E = gsl_ran_flat(r,expt->E_min,expt->E_max);
+
+      double phi = gsl_ran_flat(r,0,2*PI);
+      double theta = acos(gsl_ran_flat(r, -1, 1));
+
+      double p_max = convolvedRate(expt->E_min,&parameters);
+      double p = convolvedRate(E,&parameters);
+
+      if (gsl_rng_uniform(r) < p/p_max)
+      {
+	expt->data.push_back(Event(E,theta,phi));
+	N++;
+      }
+
+    }
+
+    //Return number of expected events (may be required)
+    return Ne;
+}
+
+
+void generateLisantiEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k)
+{
+  //Only works with energies at the minute
+
+ //Arrange parameters in an array
+    double params[6];
+
+    //Theoretical parameters
+    params[0] = log10(m_x);
+    params[1] = log10(sigma_SI);
+    params[2] = log10(sigma_SD);
+    params[3] = v0;
+    params[4] = v_esc;
+    params[5] = k;
+
+
+
+
+    ParamSet parameters(expt,params);
+
+    double Norm = 0;
+
+     double velParams[3];
+     velParams[0] = params[3];
+     velParams[1] = params[4];
+     velParams[2] = params[5];
+
+     Norm = Lisanti_norm(velParams);
+     std::cout << Norm << std::endl;
+
+    for (int i = 0; i < expt->N_Ebins; i++)
+    {
+      //Calculate number of expected and observed events
+      double Ne = expt->m_det*expt->exposure*(N_expected(&LisantiRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]))/Norm;
+      expt->asimov_data[i] += Ne;
+    }
+}
+
+
 double generateBGEvents(Detector* expt)
 {
 
@@ -327,6 +450,20 @@ double generateBGEvents(Detector* expt)
 
    //Return expected number of BG events (if needed)
    return Ne_BG;
+}
+
+void generateBGEvents_Asimov(Detector* expt)
+{
+  ParamSet parameters(expt,NULL);
+  setCurrentRate(&BGRate);
+
+
+    for (int i = 0; i < expt->N_Ebins; i++)
+    {
+      //Calculate number of expected and observed events
+      double Ne = expt->m_det*expt->exposure*(N_expected(&BGRate, parameters, expt->bin_edges[i], expt->bin_edges[i+1]));
+      expt->asimov_data[i] += Ne;
+    }
 }
 
 

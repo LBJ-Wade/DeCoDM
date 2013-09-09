@@ -42,4 +42,9 @@ double convolvedRate(double E, void* params);
 double preConvolvedRate(double E, void* params);
 double spreadRate(double E, void* params);
 
+double Lisanti_f(double v, void* params);
+double Lisanti_norm(void* params);
+double LisantiRate(double E, void* params);
+double LisantiIntegrand(double v, void* params);
+
 #endif

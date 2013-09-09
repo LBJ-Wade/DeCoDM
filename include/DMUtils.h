@@ -45,6 +45,8 @@ void setCurrentRate( double rate(double, void*));
 
 int load_params(std::string filename);
 
+int nCr(int n, int r);
+
 //------------Global Variables
 
 extern std::string expt_folder;
