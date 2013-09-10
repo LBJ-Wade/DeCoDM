@@ -389,9 +389,6 @@ void generateLisantiEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
     params[4] = v_esc;
     params[5] = k;
 
-
-
-
     ParamSet parameters(expt,params);
 
     double Norm = 0;
@@ -402,7 +399,7 @@ void generateLisantiEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
      velParams[2] = params[5];
 
      Norm = Lisanti_norm(velParams);
-     std::cout << Norm << std::endl;
+     //std::cout << Norm << std::endl;
 
     for (int i = 0; i < expt->N_Ebins; i++)
     {

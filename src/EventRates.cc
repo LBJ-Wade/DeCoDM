@@ -77,11 +77,13 @@ double maxwell(double E, void* params)
 
   //Note the factor of 0.5;
 
+  double vel_integral = (1.0/(2*v_lag))*(gsl_sf_erf((v +v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+
   double int_factor = 0;
    if (USE_SD)    int_factor += sigma_SD*expt->SD_formfactor(E)*expt->SD_enhancement();
    if (USE_SI)    int_factor += sigma_SI*expt->SI_formfactor(E)*expt->SI_enhancement();
 
-  return 0.5*(4*PI)*rate_prefactor(m_n, m_x, 1, 0.3)*int_factor*(1.0/(2*v_lag))*(gsl_sf_erf((v +v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+  return 0.5*(4*PI)*rate_prefactor(m_n, m_x, 1, 0.3)*int_factor*vel_integral;
 }
 
 double binnedRate(double v, double theta, double phi, int N_bins, double* v_edges, ParamSet params)
@@ -877,6 +879,7 @@ double Lisanti_f(double v, void* params)
  //if (v > 0.5*(sqrt(4*v_esc*v_esc - 3*v0*v0) - v0)) return 0;
  //if (v > (v_esc + v0)) return 0;
 
+  if (v > (0.5*v0 + 0.5*sqrt(4*v_esc*v_esc - 3*v0*v0))) return 0;
 
  double tot = 0;
 
@@ -886,12 +889,12 @@ double Lisanti_f(double v, void* params)
 
  for (int i = 0; i < k; i++)
  {
-  tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - exp((k-i)*(A-B)/C));
+  tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - 1);
   //std::cout << tot << std::endl;
  }
- tot += 2*pow(-1,k);
+ tot += pow(-1,k)*(1+A/B);
 
- if (tot < 0) return 0;
+ //if (tot < 0) return 0;
 
  //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
 
@@ -901,16 +904,14 @@ double Lisanti_f(double v, void* params)
 
 double LisantiIntegrand(double v, void* params)
 {
-  void** p = static_cast<void**>(params);
-  double* parameters = *((double**)p[2]);
-
-  double v0 = ((double*)parameters)[0];
-  double v_esc = ((double*)parameters)[1];
-  int k = round(((double*)parameters)[2]);
+  double v0 = ((double*)params)[0];
+  double v_esc = ((double*)params)[1];
+  int k = round(((double*)params)[2]);
 
   //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
+  //std::cout << (0.5*v0 + 0.5*sqrt(4*v_esc*v_esc - 3*v0*v0)) << std::endl;
 
-
+ if (v > (0.5*v0 + 0.5*sqrt(4*v_esc*v_esc - 3*v0*v0))) return 0;
 
 
     //if (v > 0.5*(sqrt(4*v_esc*v_esc - 3*v0*v0) - v0)) return 0;
@@ -923,24 +924,23 @@ double LisantiIntegrand(double v, void* params)
   double B = v0*v;
   double C = k*v0*v0;
 
+
   for (int i = 0; i < k; i++)
   {
-    tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - exp((k-i)*(A-B)/C));
+    tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - 1);
   }
-  tot += 2*pow(-1,k);
+  tot += pow(-1,k)*(1+A/B);
 
- if (tot < 0) return 0;
+ //if (tot < 0) return 0;
  //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
 
  //return v*v*pow((exp((v_esc*v_esc - v*v)/(k*v0*v0))-1),k);
- return v*tot/(2*PI);
+ return v*tot;
 }
 
 //Returns the norm of the Lisanti distribution (i.e. the integral over all speeds)
 double Lisanti_norm(void* params)
 {
-  double v_esc = ((double*)params)[1];
-
 
   //Declare gsl workspace (5000 subintervals)
   gsl_integration_workspace * workspace
@@ -954,7 +954,7 @@ double Lisanti_norm(void* params)
 
   double result, error;
 
-    int status = gsl_integration_qag(&F,0,v_max, 0, 1e-6, 5000,6,
+    int status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 5000,6,
                              workspace, &result, &error);
 
 			     //if (result < 0) std::cout << "Negative rate!" << std::endl;
@@ -998,8 +998,10 @@ double LisantiRate(double E, void* params)
   double v = v_min(E,m_n,m_x);
 
 
-   double vel_integral = multipoleRadon(v, 0, &LisantiIntegrand, velParams);
+   double vel_integral = integrator(v, &LisantiIntegrand, velParams);
 
+
+   //std::cout << integrator(200, &LisantiIntegrand, velParams) << std::endl;
 
     double int_factor = 0;
    if (USE_SD)    int_factor += sigma_SD*expt->SD_formfactor(E)*expt->SD_enhancement();
@@ -1009,6 +1011,45 @@ double LisantiRate(double E, void* params)
 
   return rate_prefactor(m_n, m_x, 1, 0.3)*int_factor*vel_integral;
 
+}
+
+double integrator(double v_q, double integrand (double,void*), double* params)
+{
+
+  if (v_q > v_max)
+  {
+    //std::cout << "Hello\t" << v_q << std::endl;
+   return 0;
+  }
+
+  //Declare gsl workspace (1000 subintervals)
+  gsl_integration_workspace * workspace
+         = gsl_integration_workspace_alloc (5000);
+
+  //Declare gsl function to be integrated
+  gsl_function F;
+  F.function = integrand;
+
+  F.params = params;
+
+  double result, error;
+
+  int status = gsl_integration_qag(&F,v_q,1000, 0, 1e-6, 5000,6,
+                             workspace, &result, &error);
+
+  if (status ==  GSL_EROUND)
+  {
+  //result = 0;
+  std::cout << "GSL rounding error!" << std::endl;
+  std::cout << result << std::endl;
+  }
+
+  //Free workspace
+  gsl_integration_workspace_free (workspace);
+
+
+  //Return result of integration
+  return 0.5*4*PI*result;
 }
 
 

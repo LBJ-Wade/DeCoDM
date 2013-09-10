@@ -47,4 +47,6 @@ double Lisanti_norm(void* params);
 double LisantiRate(double E, void* params);
 double LisantiIntegrand(double v, void* params);
 
+double integrator(double v_q, double integrand (double,void*), double* params);
+
 #endif
