@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
   std::cout << "# events expected at IceCube-86:\t" << Ne << std::endl;
   std::cout << "# events observed at IceCube-86:\t" << No << std::endl;
 
-  printEvents(No,77760000.0, "ICdata.dat");
+  printEvents(No,77760000.0, "myevents.dat");
 
   //free(experiments);
 
