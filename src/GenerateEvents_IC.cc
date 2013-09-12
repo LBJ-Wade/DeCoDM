@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
   std::cout << "# events observed at IceCube-86:\t" << No << std::endl;
 
   printEvents(No,77760000.0, "ICevents/myevents.dat");
-
+  printAsimovEvents(No, "ICevents/myevents_Asimov.dat");
   //free(experiments);
 
    gsl_rng_free (r);
@@ -142,6 +142,19 @@ void printEvents(int No, double exposure, std::string filename)
     outputfile << "[phi uncert]  2.49472" << std::endl;
     outputfile << "###" << std::endl;
   }
+
+  //Close output file
+  outputfile.close();
+}
+
+void printAsimovEvents(int Ne, double exposure, std::string filename)
+{
+  //Save events to filename
+
+  //Output file to output events to
+  std::ofstream outputfile;
+  outputfile.open (filename.c_str());
+  outputfile << Ne;
 
   //Close output file
   outputfile.close();

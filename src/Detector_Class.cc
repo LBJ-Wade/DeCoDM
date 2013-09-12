@@ -163,7 +163,7 @@ double Detector::SI_formfactor(double E)
 
 double Detector::SD_formfactor(double E)
 {
-  //Following Cannoni; and Divani et al.
+  //Cerdeno, Fornasa et al (2012)
 
   //Define conversion factor from amu-->keV
   double amu = 931.5*1000;
@@ -173,37 +173,12 @@ double Detector::SD_formfactor(double E)
 
   //Convert q into fm^-1
   q *= (1e-12/1.97e-7);
-
   //q *= 1e-6;
 
-  //NB: B is in fm
+  //NB: b is in fm
   double b = 1.0*pow(m_n,1.0/6.0);
 
   double u = (q*b*q*b)/2.0;
-/*
-  double R = 0.91*pow(m_n,1.0/3.0) + 0.3;
-
-
-  double y = (q*R*zeta/0.1973269602);
-
- double  F = exp(-y*y/3.0);
-
-  //Calculate Nuclear parameters in fm
-  double R = pow(m_n,1.0/3.0);
-
-  //Calculate Spin Form Factor squared
-  double F;
-  if (q*R < 2.55)||(q*R > 4.5)
-  {
-    F = pow(boost::math::sph_bessel(0,q*R),2);
-  }
-  else
-  {
-    F = 0.047;
-  }
-*/
-  //double F = ((beta + delta)*u*u - zeta*u + 1)*exp(-u/2.0);
-  //double F = (0.01183*pow(q,4) -0.145*pow(q,3) + 0.2176*pow(q,2) - 4.0*q/3.0 + 1)*exp(-q);
 
   double F = N*((1-beta)*exp(-alpha*u) + beta);
 
