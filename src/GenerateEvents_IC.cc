@@ -23,6 +23,7 @@ const gsl_rng_type * T;
 //--------Function Prototypes-----------
 
 void printEvents(int No, double exposure, std::string filename);
+void printAsimovEvents(double Ne, std::string filename);
 extern "C" { void dsinterface_nevents_( double*, double*, double*, double*, double*, double*, double* ); }
 extern "C" { void dsinterface_init_();}
 //--------Main - Event Generator---------
@@ -147,7 +148,7 @@ void printEvents(int No, double exposure, std::string filename)
   outputfile.close();
 }
 
-void printAsimovEvents(int Ne, double exposure, std::string filename)
+void printAsimovEvents(double Ne, std::string filename)
 {
   //Save events to filename
 
