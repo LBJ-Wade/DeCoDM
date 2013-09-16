@@ -19,6 +19,7 @@
 //File scope vairables
 const gsl_rng_type * T;
  gsl_rng * r;
+int USE_ASIMOV;
 
 //--------Function Prototypes-----------
 
@@ -31,10 +32,21 @@ extern "C" { void dsinterface_init_();}
 int main(int argc, char *argv[])
 {
   //Read in command line arguments
-  if (argc != 4)
+  if (argc < 4)
   {
-    std::cout << "Not enough arguments - require m_x (Gev) AND sigma_SI (cm^2) AND sigma_SD (cm^2)" << std::endl;
+    std::cout << "Not enough arguments - require m_x (Gev) AND sigma_SI (cm^2) AND sigma_SD (cm^2) [and optional USE_ASIMOV(0/1)]" << std::endl;
     return 0;
+  }
+
+  if (argc == 5)
+  {
+    USE_ASIMOV = atoi(argv[4]);
+  }
+
+  if (argc > 5)
+  {
+   std::cout << "Too many arguments!" << std::endl;
+   return 0;
   }
 
   //DM mass
@@ -95,6 +107,11 @@ int main(int argc, char *argv[])
   else std::cout << "Unable to open distribution parameter file:\t'" << "dist.txt" << "'" << std::endl;
 
   int No = gsl_ran_poisson(r, Ne);
+  if (USE_ASIMOV)
+  {
+    No = round(Ne);
+    std::cout << "NB: Generating Asimov Data..." << std::endl;
+  }
 
   std::cout << "# events expected at IceCube-86:\t" << Ne << std::endl;
   std::cout << "# events observed at IceCube-86:\t" << No << std::endl;
