@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
   std::cout << "# events observed at IceCube-86:\t" << No << std::endl;
 
   printEvents(No,77760000.0, "ICevents/myevents.dat");
-  printAsimovEvents(No, "ICevents/myevents_Asimov.dat");
+  printAsimovEvents(Ne, "ICevents/myevents_Asimov.dat");
   //free(experiments);
 
    gsl_rng_free (r);
