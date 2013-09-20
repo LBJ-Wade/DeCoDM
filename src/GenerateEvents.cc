@@ -29,8 +29,8 @@ const gsl_rng_type * T;
 void generateEvents(Detector* expt,double m_x, double sigma_SI, double sigma_SD);
 void printEvents(std::vector<Event> data, std::string filename);
 
-double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v);
-void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v);
+double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v, double v_esc);
+void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v, double v_esc);
 
 double generateLisantiEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k);
 void generateLisantiEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k);
@@ -155,10 +155,11 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
       double fraction;
       double sigma_v;
       double v_lag[3];
-
+      double v_esc;
 
       //Read in parameter values
       N_dist = read_param_int(&file, "N_dist");
+      v_esc = read_param_double(&file, "v_esc");
 
       for (int i = 0; i < N_dist; i++)
       {
@@ -166,9 +167,10 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 	fraction = read_param_double(&file, "fraction"+std::string(numstr));
 	read_param_vector(&file, "v_lag"+std::string(numstr),v_lag);
 	sigma_v = read_param_double(&file, "sigma_v" + std::string(numstr));
+
 	//std::cout << sigma_v << '\t' << v_lag[2] << std::endl;
-	Ne += generateMaxwellEvents(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v);
-	generateMaxwellEvents_Asimov(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v);
+	Ne += generateMaxwellEvents(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v, v_esc);
+	generateMaxwellEvents_Asimov(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v, v_esc);
 
       }
     }
@@ -221,10 +223,10 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
 }
 
-double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v)
+double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v, double v_esc)
 {
     //Arrange parameters in an array
-    double params[7];
+    double params[8];
 
     //Theoretical parameters
     params[0] = log10(m_x);
@@ -234,6 +236,7 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
     params[4] = v_lag[1];
     params[5] = v_lag[2];
     params[6] = sigma_v;
+    params[7] = v_esc;
 
     //Calculate v_lag_length
     double v_lag_length = sqrt(pow(v_lag[0],2) + pow(v_lag[1],2) + pow(v_lag[2],2));
@@ -243,10 +246,10 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
     //Add in a new routine which generates the background events...
 
     //Calculate number of expected and observed events
-    double Ne = expt->m_det*expt->exposure*(N_expected(&maxwell, parameters));
+    double Ne = expt->m_det*expt->exposure*(N_expected(&maxwellRate, parameters));
     int No = gsl_ran_poisson(r,Ne);
 
-    setCurrentRate(&maxwell);
+    setCurrentRate(&maxwellRate);
 
     //Initialise rotation matrix
     double rot_matrix[9];
@@ -285,12 +288,12 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
 }
 
 
-void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v)
+void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v, double v_esc)
 {
   //Only works with energies at the minute
 
   //Arrange parameters in an array
-    double params[7];
+    double params[8];
 
     //Theoretical parameters
     params[0] = log10(m_x);
@@ -300,6 +303,7 @@ void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
     params[4] = v_lag[1];
     params[5] = v_lag[2];
     params[6] = sigma_v;
+    params[7] = v_esc;
 
 
     ParamSet parameters(expt,params);
@@ -307,7 +311,7 @@ void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
     for (int i = 0; i < expt->N_Ebins; i++)
     {
       //Calculate number of expected and observed events
-      double Ne = expt->m_det*expt->exposure*(N_expected(&maxwell, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
+      double Ne = expt->m_det*expt->exposure*(N_expected(&maxwellRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
       expt->asimov_data[i] += Ne;
     }
 }

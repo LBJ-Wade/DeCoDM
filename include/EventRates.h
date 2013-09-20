@@ -7,7 +7,7 @@
 
 double maxwellRadon(double v, double theta, double phi, double vlagx, double vlagy, double vlagz, double sigma);
 double diffRate (double v, double theta, double phi, ParamSet params);
-double maxwell(double E, void* params);
+double maxwellRate(double E, void* params);
 
 double binnedRate(double v, double theta, double phi, int N_bins, double* v_egdes, ParamSet params);
 

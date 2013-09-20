@@ -57,7 +57,7 @@ double maxwellRadon(double v, double theta, double phi, double vlagx, double vla
  return (pow(2*PI*sigma*sigma,-1.0/2.0))*exp(-0.5*pow((v-dotproduct)/sigma,2));
 }
 
-double maxwell(double E, void* params)
+double maxwellRate(double E, void* params)
 {
   //double v_max = 1000;
 
@@ -71,13 +71,36 @@ double maxwell(double E, void* params)
   double sigma_SD = pow(10,parameters[2]);
   double v_lag = sqrt(pow(parameters[3],2) + pow(parameters[4],2) + pow(parameters[5],2));
   double v_rms = parameters[6];
+  double v_esc = parameters[7];
 
 
   double v = v_min(E,m_n,m_x);
 
   //Note the factor of 0.5;
 
-  double vel_integral = (1.0/(2*v_lag))*(gsl_sf_erf((v +v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+  double N = 1.0/(pow(2*PI,1.5)*pow(v_rms,3)*gsl_sf_erf(v_esc/(sqrt(2)*v_rms)) - 4*PI*v_rms*v_rms*exp(-0.5*pow(v_esc/v_rms,2)));
+
+  double vel_integral = 0;
+
+  if (v > (v_esc + v_lag))
+  {
+   return 0;
+  }
+  else if (v < (v_esc - v_lag))
+  {
+    vel_integral = sqrt(2)*pow(PI,1.5)*N*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v + v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+  }
+  else
+  {
+    vel_integral = sqrt(2)*pow(PI,1.5)*N*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v_esc)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+  }
+
+  vel_integral -= 4*PI*N*v_rms*v_rms*exp(-0.5*pow(v_esc/v_rms,2));
+
+  //double vel_integral = (1.0/(2*v_lag))*(gsl_sf_erf((v +v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+
+
+
 
   double int_factor = 0;
    if (USE_SD)    int_factor += sigma_SD*expt->SD_formfactor(E)*expt->SD_enhancement();
@@ -876,65 +899,72 @@ double Lisanti_f(double v, void* params)
  double v_esc = ((double*)params)[1];
  int k = round(((double*)params)[2]);
 
- //if (v > 0.5*(sqrt(4*v_esc*v_esc - 3*v0*v0) - v0)) return 0;
- //if (v > (v_esc + v0)) return 0;
-
-  if (v > (0.5*v0 + 0.5*sqrt(4*v_esc*v_esc - 3*v0*v0))) return 0;
+  if (v > (v0 + v_esc)) return 0;
 
  double tot = 0;
 
  double A = v_esc*v_esc - v*v - v0*v0;
- double B = v0*v;
+ double B = 2*v0*v;
  double C = k*v0*v0;
 
- for (int i = 0; i < k; i++)
+ if (v < (v_esc - v0))
  {
-  tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - 1);
-  //std::cout << tot << std::endl;
+    for (int i = 0; i < k; i++)
+    {
+      tot += 2*PI*(C/B)*pow(-1,i)*(nCr(k, i)/(1.0*k-i))*(exp((k-i)*(A+B)/C) - exp((k-i)*(A-B)/C));
+    }
+    tot += pow(-1,k)*4*PI;
+
  }
- tot += pow(-1,k)*(1+A/B);
+ else
+ {
+   for (int i = 0; i < k; i++)
+    {
+      tot += 2*PI*(C/B)*pow(-1,i)*(nCr(k, i)/(1.0*k-i))*(exp((k-i)*(A+B)/C) - 1);
+    }
+    tot += 2*PI*pow(-1,k)*(1+A/B);
+ }
 
- //if (tot < 0) return 0;
 
- //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
-
- //return v*v*pow((exp((v_esc*v_esc - v*v)/(k*v0*v0))-1),k);
  return v*v*tot;
 }
 
 double LisantiIntegrand(double v, void* params)
 {
-  double v0 = ((double*)params)[0];
-  double v_esc = ((double*)params)[1];
-  int k = round(((double*)params)[2]);
-
-  //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
-  //std::cout << (0.5*v0 + 0.5*sqrt(4*v_esc*v_esc - 3*v0*v0)) << std::endl;
-
- if (v > (0.5*v0 + 0.5*sqrt(4*v_esc*v_esc - 3*v0*v0))) return 0;
+   double v0 = ((double*)params)[0];
+ double v_esc = ((double*)params)[1];
+ int k = round(((double*)params)[2]);
 
 
-    //if (v > 0.5*(sqrt(4*v_esc*v_esc - 3*v0*v0) - v0)) return 0;
-  //if (v > (v_esc + v0)) return 0;
+
+  if (v > (v0 + v_esc)) return 0;
+
+ double tot = 0;
+
+ double A = v_esc*v_esc - v*v - v0*v0;
+ double B = 2*v0*v;
+ double C = k*v0*v0;
+
+ if (v < (v_esc - v0))
+ {
+    for (int i = 0; i < k; i++)
+    {
+      tot += 2*PI*(C/B)*pow(-1,i)*(nCr(k, i)/(1.0*k-i))*(exp((k-i)*(A+B)/C) - exp((k-i)*(A-B)/C));
+    }
+    tot += pow(-1,k)*4*PI;
+
+ }
+ else
+ {
+   for (int i = 0; i < k; i++)
+    {
+      tot += 2*PI*(C/B)*pow(-1,i)*(nCr(k, i)/(1.0*k-i))*(exp((k-i)*(A+B)/C) - 1);
+      //std::cout << tot << std::endl;
+    }
+    tot += 2*PI*pow(-1,k)*(1+A/B);
+ }
 
 
-  double tot = 0;
-
-  double A = v_esc*v_esc - v*v - v0*v0;
-  double B = v0*v;
-  double C = k*v0*v0;
-
-
-  for (int i = 0; i < k; i++)
-  {
-    tot += (C/B)*pow(-1,i)*(nCr(k, i)/(k-i))*(exp((k-i)*(A+B)/C) - 1);
-  }
-  tot += pow(-1,k)*(1+A/B);
-
- //if (tot < 0) return 0;
- //std::cout << v0 << "\t" << v_esc << "\t" << k << std::endl;
-
- //return v*v*pow((exp((v_esc*v_esc - v*v)/(k*v0*v0))-1),k);
  return v*tot;
 }
 
@@ -999,7 +1029,6 @@ double LisantiRate(double E, void* params)
 
 
    double vel_integral = integrator(v, &LisantiIntegrand, velParams);
-
 
    //std::cout << integrator(200, &LisantiIntegrand, velParams) << std::endl;
 

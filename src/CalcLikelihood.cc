@@ -488,6 +488,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	double fraction;
 	double sigma_v;
 	double v_lag[3];
+	double v_esc;
 	char numstr[21]; // enough to hold all numbers up to 64-bits
 	//--------------------------------------------------<<<<<<<<<<<<<<<<<<CURRENTLY ONLY WORKS FOR A SINGLE DISTRIBUTION N_dist=1
 
@@ -508,13 +509,15 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	    fraction = read_param_double(&file, "fraction"+std::string(numstr));
 	    read_param_vector(&file, "v_lag"+std::string(numstr),v_lag);
 	    sigma_v = read_param_double(&file, "sigma_v" + std::string(numstr));
+
 	  }
+	  v_esc = read_param_double(&file, "v_esc");
 
 
 	    // sigma_v = 156;
 	  // double v_lag = 230;
 
-	  double full_params[7];
+	  double full_params[8];
 	  full_params[0] = params[0];
 	  full_params[1] = params[1];
 	  full_params[2] = params[2];
@@ -522,6 +525,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	  full_params[4] = v_lag[1];
 	  full_params[5] = v_lag[2];
 	  full_params[6] = sigma_v;
+	  full_params[7] = v_esc;
 
 	  parameters.theoryParams = full_params;
 
@@ -540,14 +544,14 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &maxwell, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
+	     PL += PoissonLike(expt, parameters, &maxwellRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
 	  }
 	  else
 	  {
 	    //Calculate expected numbers of events
-	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&maxwell, parameters);
+	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&maxwellRate, parameters);
 	    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
 
 	    double Ne_tot = Ne+Ne_BG;
@@ -566,7 +570,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	    {
 	      if (dir == 0)  //Do it isotropically!
 	      {
-		  setCurrentRate(&maxwell);
+		  setCurrentRate(&maxwellRate);
 		  eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
 		  setCurrentRate(&BGRate);
 		  eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
