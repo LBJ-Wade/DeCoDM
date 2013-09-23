@@ -25,11 +25,21 @@ Detector::Detector(std::string filename)
   if (file.is_open())
   {
     //Read in parameter values
-    m_n = read_param_double(&file, "m_n");
+    N_isotopes = read_param_double(&file, "N_isotopes");
+
+    char numstr[21]; // enough to hold all numbers up to 64-bits
+    for (int i = 0; i < N_isotopes; i++)
+    {
+      sprintf(numstr, "%d", i+1);
+      m_n.push_back(read_param_double(&file, "m_"+std::string(numstr)));
+      frac_n.push_back(read_param_double(&file, "frac_"+std::string(numstr)));
+    }
+
     m_det = read_param_double(&file, "m_det");
     exposure = read_param_double(&file, "exposure");
     E_min = read_param_double(&file, "E_min");
     E_max = read_param_double(&file, "E_max");
+
     Sn = read_param_double(&file, "Sn");
     Sp = read_param_double(&file, "Sp");
     zeta = read_param_double(&file, "zeta");
@@ -74,7 +84,7 @@ Detector::Detector(std::string filename)
 }
 
 //Count data in each bin
-double Detector::bin_data()
+void Detector::bin_data()
 {
    for (int i = 0; i < data.size(); i++)
    {
@@ -92,7 +102,6 @@ void Detector::displayParameters()
 {
  std::cout << std::endl;
  std::cout << "Detector parameters:" << std::endl;
- std::cout << "\tNuclear mass\t" << m_n << std::endl;
  std::cout << "\tDetector mass\t" << m_det << std::endl;
  std::cout << "\tExposure time\t" << exposure << std::endl;
  std::cout << "\tEnergy range\t" << E_min << "-->" << E_max << std::endl;
@@ -100,6 +109,13 @@ void Detector::displayParameters()
  std::cout << "\tBackground level\t" << BG_level << std::endl;
  std::cout << "\tUse binned data\t" << USE_BINNED_DATA << std::endl;
  if (USE_BINNED_DATA) std::cout << "\tBin width\t" << bin_width << std::endl;
+ std::cout << std::endl;
+
+ std::cout << "Detector composition:" << std::endl;
+ for (int i = 0; i < N_isotopes; i++)
+ {
+    std::cout << "\t" << frac_n[i]*100 << "% - nuclear mass " << m_n[i] << " amu" << std::endl;
+ }
  std::cout << std::endl;
 
  std::cout << "Spin parameters:" << std::endl;
@@ -123,13 +139,13 @@ void Detector::displayEvents()
  }
 }
 
-double Detector::SI_formfactor(double E)
+double Detector::SI_formfactor(double E, int i_isotope)
 {
   //Define conversion factor from amu-->keV
   double amu = 931.5*1000;
 
   //Convert recoil energy to momentum transfer q in keV
-  double  q = sqrt(2*m_n*amu*E);
+  double  q = sqrt(2*m_n[i_isotope]*amu*E);
 
   //Convert q into fm^-1
   q *= (1e-12/1.97e-7);
@@ -145,7 +161,7 @@ double Detector::SI_formfactor(double E)
     //Calculate Nuclear parameters in fm
     double s = 0.9;
     double a = 0.52;
-    double c = (1.23*(pow(m_n,(1.0/3.0))) - 0.60);
+    double c = (1.23*(pow(m_n[i_isotope],(1.0/3.0))) - 0.60);
 
     double R1 = sqrt(c*c + 7*PI*PI*a*a/3 - 5*s*s);
 
@@ -161,7 +177,7 @@ double Detector::SI_formfactor(double E)
   return F;
 }
 
-double Detector::SD_formfactor(double E)
+double Detector::SD_formfactor(double E, int i_isotope)
 {
   //Cerdeno, Fornasa et al (2012)
 
@@ -169,14 +185,14 @@ double Detector::SD_formfactor(double E)
   double amu = 931.5*1000;
 
   //Convert recoil energy to momentum transfer q in keV
-  double  q = sqrt(2*m_n*amu*E);
+  double  q = sqrt(2*m_n[i_isotope]*amu*E);
 
   //Convert q into fm^-1
   q *= (1e-12/1.97e-7);
   //q *= 1e-6;
 
   //NB: b is in fm
-  double b = 1.0*pow(m_n,1.0/6.0);
+  double b = 1.0*pow(m_n[i_isotope],1.0/6.0);
 
   double u = (q*b*q*b)/2.0;
 
@@ -188,9 +204,9 @@ double Detector::SD_formfactor(double E)
   return pow(F,1);
 }
 
-double Detector::SI_enhancement()
+double Detector::SI_enhancement(int i_isotope)
 {
- return  m_n*m_n;
+ return  m_n[i_isotope]*m_n[i_isotope];
 }
 
 double Detector::SD_enhancement() //Watch out there is dependence on ap and an in here...check plus and minus signs...

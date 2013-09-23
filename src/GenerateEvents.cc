@@ -243,13 +243,16 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
 
     ParamSet parameters(expt,params);
 
+        std::cout << "------NB:Maxwell directional data is not accurate -------------" << std::endl;
+
     //Add in a new routine which generates the background events...
 
     //Calculate number of expected and observed events
-    double Ne = expt->m_det*expt->exposure*(N_expected(&maxwellRate, parameters));
+    setCurrentVelInt(&VelInt_maxwell);
+    double Ne = expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
     int No = gsl_ran_poisson(r,Ne);
 
-    setCurrentRate(&maxwellRate);
+    setCurrentRate(&DMRate);
 
     //Initialise rotation matrix
     double rot_matrix[9];
@@ -270,7 +273,7 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
 	while ((y <= -1)||(y >= 1)) //Is this the correct way of generating things...?
 	{
 	  //-----------------double check that this is the correct distribution-----------------------
-	  y = ((v_min(E,expt->m_n,m_x)/v_lag_length) + gsl_ran_gaussian(r,sigma_v/v_lag_length));
+	  y = ((v_min(E,expt->m_n[0],m_x)/v_lag_length) + gsl_ran_gaussian(r,sigma_v/v_lag_length));
 	}
 	double theta = acos(y);
 
@@ -311,7 +314,8 @@ void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
     for (int i = 0; i < expt->N_Ebins; i++)
     {
       //Calculate number of expected and observed events
-      double Ne = expt->m_det*expt->exposure*(N_expected(&maxwellRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
+      setCurrentVelInt(&VelInt_maxwell);
+      double Ne = expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
       expt->asimov_data[i] += Ne;
     }
 }
@@ -348,11 +352,12 @@ double generateLisantiEvents(Detector* expt, double m_x, double sigma_SI, double
      Norm = Lisanti_norm(velParams);
 
     //Calculate number of expected and observed events
-    double Ne = expt->m_det*expt->exposure*(N_expected(&LisantiRate, parameters))/Norm;
+    setCurrentVelInt(&VelInt_Lisanti);
+    double Ne = expt->m_det*expt->exposure*(N_expected(&DMRate, parameters))/Norm;
     int No = gsl_ran_poisson(r,Ne);
 
 
-    setCurrentRate(&LisantiRate);
+    setCurrentRate(&DMRate);
 
 
     for (int N = 0; N < No; )
@@ -405,10 +410,12 @@ void generateLisantiEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
      Norm = Lisanti_norm(velParams);
      //std::cout << Norm << std::endl;
 
+     setCurrentVelInt(&VelInt_Lisanti);
+
     for (int i = 0; i < expt->N_Ebins; i++)
     {
       //Calculate number of expected and observed events
-      double Ne = expt->m_det*expt->exposure*(N_expected(&LisantiRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]))/Norm;
+      double Ne = expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]))/Norm;
       expt->asimov_data[i] += Ne;
     }
 }

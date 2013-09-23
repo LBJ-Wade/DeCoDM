@@ -89,9 +89,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   int N_params = *num_hard;
   int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
 
-
-
-
   //---------------------------------------------------------------------------------------------------
   //--------Binned Speed parametrisation: mode = 1-------------------------------------------------------
   //---------------------------------------------------------------------------------------------------
@@ -107,59 +104,29 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  //      std::cout << params[i + (N_bins/2) -1] << std::endl;
 	  norm += params[i];
 	  //norm2 += params[i+(N_bins/2)-1];
-
 	}
-
-
-
   }
+  //---------------------------------------------------------------------------------------------------
+  //--------Binned momentum parametrisation: mode = 2--------------------------------------------------
+  //---------------------------------------------------------------------------------------------------
   if (mode == 2)
   {
 
 
       N_terms = N_params-2;
 
-	N_params++;
+      N_params++;
 
 
-	for (int i = 2; i < N_terms+1; i++)
-	{
+      for (int i = 2; i < N_terms+1; i++)
+      {
 	norm += params[i];
-	}
-
-	//Neeeeed to code in this bit!
-
-	/*
-	  double v_edges[6];
-	    double p_a = 3.6;
-	    double p_b = 53;
-
-	double delta_p = (p_b - p_a)/5;
-
-	for (int i = 0; i < 6; i++)
-	{
-	  v_edges[i] = p_a + i*delta_p;
-	}
-
-
-	  if ((f0_binned(p_a,full_params) - bins(p_b,full_params)) >= (2*PI*1.0/v_p))
-	  {
-	    *result = 1e30;
-	    loglike += 1e30;
-	    return loglike;
-
-	  }
-	*/
-
-	//Recode all of this bit to make sure normalisation works etc..!
-
-
-
-
-
-
+      }
+      std::cout << "Momentum binned is not currently supported!" << std::endl;
   }
-
+  //---------------------------------------------------------------------------------------------------
+  //--------Poly-Exp parametrisation: mode = 3--------------------------------------------------------
+  //---------------------------------------------------------------------------------------------------
   if (mode == 3)
   {
 
@@ -177,8 +144,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
 	  //----------------------------------<<<<<<<<<<<<<<<<<<<FIX OFFSET!!!!!!!!!!!!!!_______________-------------!
 
-
-
 	  N_terms = N_params-1-offset;
 
 	  //std::cout << N_terms << std::endl;
@@ -192,32 +157,22 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
 	  parameters[0] = 0;
 
-	  //if ((dir == 0)||(dir == 1))
-	  //{
+	  F.function = &polyf;
+	  F.params = parameters;
 
-	      F.function = &polyf;
-	      F.params = parameters;
+	  double error;
+	  int status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm, &error);
 
-
-	      double error;
-
-		int status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,
-				      workspace, &norm, &error);
-
-				    // std::cout << log(norm) << std::endl;
-
-
-	      if (status ==  GSL_EROUND)
-	      {
-		//result = 0;
-		std::cout << "GSL rounding error!" << std::endl;
-		std::cout << norm << std::endl;
-	      }
+	  if (status ==  GSL_EROUND)
+	  {
+	    std::cout << "GSL rounding error!" << std::endl;
+	    std::cout << norm << std::endl;
+	  }
 
       //Free workspace
       gsl_integration_workspace_free (workspace);
       free(parameters);
-    //params[2] += log(norm);
+
     }
     else if (dir == 1)
     {
@@ -249,45 +204,30 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	    //std::cout << parameters1[i] << "\t" << parameters2[i] << std::endl;
 	  }
 
-	      double error;
-	      int status;
+	  double error;
+	  int status;
 
-	      F.function = &polyf;
-	      F.params = parameters1;
+	  F.function = &polyf;
+	  F.params = parameters1;
 
+	  status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm, &error);
 
+	  if (status ==  GSL_EROUND)
+	  {
+	    std::cout << "GSL rounding error!" << std::endl;
+	    std::cout << norm << std::endl;
+	  }
 
-		status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,
-				      workspace, &norm, &error);
+	  F.function = &polyf;
+	  F.params = parameters2;
 
-				    // std::cout << log(norm) << std::endl;
+	  status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm2, &error);
 
-
-	      if (status ==  GSL_EROUND)
-	      {
-		//result = 0;
-		std::cout << "GSL rounding error!" << std::endl;
-		std::cout << norm << std::endl;
-	      }
-
-	      F.function = &polyf;
-	      F.params = parameters2;
-
-
-
-
-		status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,
-				      workspace, &norm2, &error);
-
-				    // std::cout << log(norm) << std::endl;
-
-
-	      if (status ==  GSL_EROUND)
-	      {
-		//result = 0;
-		std::cout << "GSL rounding error!" << std::endl;
-		std::cout << norm2 << std::endl;
-	      }
+	  if (status ==  GSL_EROUND)
+	  {
+	    std::cout << "GSL rounding error!" << std::endl;
+	    std::cout << norm2 << std::endl;
+	  }
 
 	  //Free workspace
 	  gsl_integration_workspace_free (workspace);
@@ -300,12 +240,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   double* full_params;
   int N_fullparams = N_params+(1-USE_SI)+(1-USE_SD) - N_expt*USE_FLOAT_BG; //add in extra parameters for un-used interactions
   full_params = (double*)malloc(N_fullparams*sizeof(double));
-
-  // std::cout << N_fullparams << std::endl;
-
-  //N_terms = N_bins;
-
-
 
   //Pack up m_x, sigma_si, sigma_sd
   full_params[0] = params[0];
@@ -339,7 +273,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
       //std::cout << std::endl;
     }
 
-
   if (mode == 1)
   {
     //std::cout << norm << "\t" << norm2 << std::endl;
@@ -358,42 +291,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  {
 	    full_params[i] = params[i-3+offset];
 	  }
-
-    /*
-    else (dir == 1)
-    {
-
-      if (norm2 < 1)
-      {
-	full_params[3+(N_bins/2)] = 1 - norm2;
-      }
-      else
-      {
-	*result = 1e30;
-	return 1e30;
-      }
-      for (int i = 4; i < (3+(N_bins/2)); i++)
-	  {
-	    full_params[i] = params[i-3+offset];
-	    full_params[i+(N_bins/2)] = params[i+(N_bins/2)-4+offset];
-	  }
-	  */
-
-
-
-    //Transform variables...----------------------------------------------------<<<<<<<<<<<<<
-    /*
-      double n1 = 0;
-      for (int i = 3; i < N_fullparams; i++)
-      {
-	full_params[i] = pow((1 - full_params[i]),4.0);
-	n1 += full_params[i];
-      }
-      for (int i = 3; i < N_fullparams; i++)
-      {
-	full_params[i] /= n1;
-      }
-    */
 
   }
   else if (mode == 3)
@@ -468,7 +365,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
 
 
-
 double likelihood(Detector* expt, double* params, int mode, int dir)
 {
 
@@ -488,7 +384,6 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	double fraction;
 	double sigma_v;
 	double v_lag[3];
-	double v_esc;
 	char numstr[21]; // enough to hold all numbers up to 64-bits
 	//--------------------------------------------------<<<<<<<<<<<<<<<<<<CURRENTLY ONLY WORKS FOR A SINGLE DISTRIBUTION N_dist=1
 
@@ -509,15 +404,13 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	    fraction = read_param_double(&file, "fraction"+std::string(numstr));
 	    read_param_vector(&file, "v_lag"+std::string(numstr),v_lag);
 	    sigma_v = read_param_double(&file, "sigma_v" + std::string(numstr));
-
 	  }
-	  v_esc = read_param_double(&file, "v_esc");
 
 
 	    // sigma_v = 156;
 	  // double v_lag = 230;
 
-	  double full_params[8];
+	  double full_params[7];
 	  full_params[0] = params[0];
 	  full_params[1] = params[1];
 	  full_params[2] = params[2];
@@ -525,9 +418,10 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	  full_params[4] = v_lag[1];
 	  full_params[5] = v_lag[2];
 	  full_params[6] = sigma_v;
-	  full_params[7] = v_esc;
 
 	  parameters.theoryParams = full_params;
+
+	  setCurrentVelInt(&VelInt_maxwell);
 
 	  if (expt->USE_BINNED_DATA)
 	  {
@@ -544,14 +438,14 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &maxwellRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
+	     PL += PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
 	  }
 	  else
 	  {
 	    //Calculate expected numbers of events
-	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&maxwellRate, parameters);
+	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 	    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
 
 	    double Ne_tot = Ne+Ne_BG;
@@ -570,7 +464,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	    {
 	      if (dir == 0)  //Do it isotropically!
 	      {
-		  setCurrentRate(&maxwellRate);
+		  setCurrentRate(&DMRate);
 		  eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
 		  setCurrentRate(&BGRate);
 		  eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
@@ -580,7 +474,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	      {
 		std::cout << "Warning! Mode 0 does not yet support directional data!" << std::endl;
 		//THIS IS DOES NOT WORK
-		PL -= log((expt->exposure)*(expt->m_det)*diffRate(v_min(expt->data[i].energy,expt->m_n,pow(10,((double *) params)[0])),expt->data[i].theta, expt->data[i].phi, parameters)/Ne);
+		//PL -= log((expt->exposure)*(expt->m_det)*diffRate(v_min(expt->data[i].energy,expt->m_n,pow(10,((double *) params)[0])),expt->data[i].theta, expt->data[i].phi, parameters)/Ne);
 	      }
 
 		  //PL -= log((expt->exposure)*(expt->m_det)*binnedRate(v_min(expt->data[i].energy,expt->m_n,pow(10,((double *) params)[0])),expt->data[i].theta, expt->data[i].phi,5,v_edges,parameters)/Ne);
@@ -599,8 +493,9 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
     {
       if (dir == 0)
       {
+	setCurrentVelInt(&VelInt_isotropicBinned);
 	//Calculate expected numbers of events...
-	double Ne = (expt->m_det)*(expt->exposure)*(N_expected(&isotropicRateBinned, parameters));
+	double Ne = (expt->m_det)*(expt->exposure)*(N_expected(&DMRate, parameters));
 	double Ne_BG = (expt->m_det)*(expt->exposure)*(N_expected(&BGRate, parameters));
 	double Ne_tot = Ne+Ne_BG;
 
@@ -620,7 +515,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	double eventLike = 0;
 	for (int i = 0; i < No; i++)
 	  {
-	    setCurrentRate(&isotropicRateBinned);
+	    setCurrentRate(&DMRate);
 	    eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
 	    setCurrentRate(&BGRate);
 	    eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
@@ -635,8 +530,10 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
       {
 
 	//Calculate expected number of events
-	double Ne_forward = (expt->m_det)*(expt->exposure)*N_expected(&forwardRateBinned, parameters);
-	double Ne_backward = (expt->m_det)*(expt->exposure)*N_expected(&backwardRateBinned, parameters);
+	setCurrentVelInt(&VelInt_forwardBinned);
+	double Ne_forward = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
+	setCurrentVelInt(&VelInt_backwardBinned);
+	double Ne_backward = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 
 	//Expected background assuming isotropy
 	double Ne_BG_forward = 0.5*(expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
@@ -681,7 +578,8 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
       {
 	if (expt->data[i].theta < PI/2.0)
 	{
-	    setCurrentRate(&forwardRateBinned);
+	    setCurrentRate(&DMRate);
+	    setCurrentVelInt(&VelInt_forwardBinned);
 	    eventLike = f_S_forward*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_forward;
 	    setCurrentRate(&BGRate);
 	    eventLike += f_BG_forward*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy, &parameters)/Ne_BG_forward;
@@ -689,7 +587,8 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	else
 	{
 
-	    setCurrentRate(&backwardRateBinned);
+	    setCurrentRate(&DMRate);
+	    setCurrentVelInt(&VelInt_backwardBinned);
 	    eventLike = f_S_backward*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_backward;
 	    setCurrentRate(&BGRate);
 	    eventLike += f_BG_backward*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy, &parameters)/Ne_BG_backward;
@@ -707,7 +606,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 
     if (mode == 2)
     {
-      double Ne = (expt->m_det)*(expt->exposure)*N_expected(&isotropicRateBinned, parameters);
+      double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 
       //Calculate poisson part of the log-likelihood
       double logfactNo = 0;
@@ -722,50 +621,9 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
       //Calculate the event-by-event part
       for (int i = 0; i < No; i++)
       {
-	  PL -= log((expt->exposure)*(expt->m_det)*isotropicRateBinned(expt->data[i].energy,&parameters)/Ne);
+	  PL -= log((expt->exposure)*(expt->m_det)*DMRate(expt->data[i].energy,&parameters)/Ne);
       }
-
-
-      /*
-	double Ne = (expt->m_det)*(expt->exposure)*N_expected(&isotropicRate, parameters);
-      //std::cout << No << "\t" << Ne << std::endl;
-
-      //std::cout << "N_o = " << No << std::endl;
-
-      //std::cout << Ne_forward << "\t" << Ne_backward << std::endl;
-
-      double v_edges[6];
-      double p_a = 1;
-      double p_b = 12;
-
-      double delta_p = (p_b - p_a)/5;
-
-      for (int i = 0; i < 6; i++)
-      {
-	v_edges[i] = p_a + i*delta_p;
-      }
-
-      //Calculate poisson part of the log-likelihood
-      double logfactNo = 0;
-
-      for (int i = 0; i < No; i++)
-      {
-	logfactNo += log(i+1);
-      }
-
-      PL = +Ne - No*log(Ne) + logfactNo;
-
-
-
-      //Calculate the event-by-event part
-      for (int i = 0; i < No; i++)
-      {
-
-	    PL -= log((expt->exposure)*(expt->m_det)*isotropicRate(expt->data[i].energy,&parameters)/Ne);
-      }
-    */
     }
-
 
     //---------------------------------------------------------------------------------------------------
     //--------Polynomial parametrisation: mode = 3-------------------------------------------------------
@@ -774,6 +632,8 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
     {				//Use pointers to the rate functions to avoid writing all this out multiple times ----------------<<<<<<<<<<
       if (dir == 0)
       {
+	setCurrentVelInt(&VelInt_isotropicPoly);
+
 	if (expt->USE_BINNED_DATA)
 	  {
 	   for (int i = 0; i < expt->N_Ebins; i++)
@@ -789,7 +649,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &isotropicRatePoly, No_bin,expt->bin_edges[i], expt->bin_edges[i+1] );
+	     PL += PoissonLike(expt, parameters, &DMRate, No_bin,expt->bin_edges[i], expt->bin_edges[i+1] );
 
 	   }
 	  }
@@ -797,7 +657,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	{
 
 	    //Calculate expected number of events
-	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&isotropicRatePoly, parameters);
+	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 	    double Ne_BG = (expt->m_det)*(expt->exposure)*(N_expected(&BGRate, parameters));
 	    double Ne_tot = Ne+Ne_BG;
 
@@ -812,7 +672,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	      double eventLike = 0;
 	    for (int i = 0; i < No; i++)
 	      {
-		setCurrentRate(&isotropicRatePoly);
+		setCurrentRate(&DMRate);
 		eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
 		setCurrentRate(&BGRate);
 		eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
@@ -824,8 +684,10 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
       else if (dir == 1)
       {
 	//Calculate expected number of events
-	double Ne_forward = (expt->m_det)*(expt->exposure)*N_expected(&forwardRatePoly, parameters);
-	double Ne_backward = (expt->m_det)*(expt->exposure)*N_expected(&backwardRatePoly, parameters);
+	setCurrentVelInt(&VelInt_forwardPoly);
+	double Ne_forward = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
+	setCurrentVelInt(&VelInt_backwardPoly);
+	double Ne_backward = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 
 	//Expected background assuming isotropy
 	double Ne_BG_forward = 0.5*(expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
@@ -851,10 +713,6 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	  else No_backward++;
 	}
 
-	//std::cout << No_forward << "\t" << No_backward << std::endl;
-
-	//std::cout << f_S_forward << std::endl;
-
 	if ((Ne_backward < 0)||(Ne_forward < 0)) return 1e30;
 
 
@@ -872,14 +730,16 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	{
 	  if (expt->data[i].theta < PI/2.0)
 	  {
-	      setCurrentRate(&forwardRatePoly);
+	      setCurrentRate(&DMRate);
+	      setCurrentVelInt(&VelInt_forwardPoly);
 	      eventLike = f_S_forward*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_forward;
 	      setCurrentRate(&BGRate);
 	      eventLike += f_BG_forward*(expt->exposure)*(expt->m_det)*0.5*convolvedRate(expt->data[i].energy, &parameters)/Ne_BG_forward;
 	  }
 	  else
 	  {
-	      setCurrentRate(&backwardRatePoly);
+	      setCurrentRate(&DMRate);
+	      setCurrentVelInt(&VelInt_backwardPoly);
 	      eventLike = f_S_backward*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_backward;
 	      setCurrentRate(&BGRate);
 	      eventLike += f_BG_backward*(expt->exposure)*(expt->m_det)*0.5*convolvedRate(expt->data[i].energy, &parameters)/Ne_BG_backward;

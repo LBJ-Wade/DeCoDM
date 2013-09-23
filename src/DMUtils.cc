@@ -30,6 +30,7 @@ int USE_FLOAT_BG;
 int USE_ASIMOV_DATA;
 
 double (*currentRate) (double, void*);
+double (*currentVelInt) (double, void*);
 double currentE;
 
 //------------Function Declarations-------------
@@ -39,6 +40,11 @@ double currentE;
 void setCurrentRate(double rate (double, void*))
 {
   currentRate = rate;
+}
+
+void setCurrentVelInt(double VelInt (double, void*))
+{
+ currentVelInt = VelInt;
 }
 
 double N_expected(double rate (double,void*), ParamSet parameters)

@@ -9,7 +9,10 @@ class Detector
 {
   public:
 
-    double m_n; //Nuclear mass in amu
+    double N_isotopes; //Number of distinct elements/isotopes
+    std::vector<double> frac_n; //Nuclear mass fraction of each element/isotope
+    std::vector<double> m_n; //Nuclear mass in amu of each element/isotope
+
     double m_det; //Total detector mass in kg
     double exposure; //Effective exposure (t_exp x eff)
     double E_min;
@@ -57,11 +60,11 @@ class Detector
     void displayEvents();
 
     //Nuclear form factors
-    double SI_formfactor(double E);
-    double SD_formfactor(double E);
+    double SI_formfactor(double E, int i_isotope);
+    double SD_formfactor(double E, int i_isotope);
 
     //Enhancement factors
-    double SI_enhancement();
+    double SI_enhancement(int i_isotope);
     double SD_enhancement();
 
     //-------------------------------ADD HERE THE ROUTINE THAT LOADS IN THE DATA???----------
@@ -72,7 +75,7 @@ class Detector
     void load_asimov_data(std::string filename);
 
     //Routine for binning the data - ONCE it has been loaded in
-    double bin_data();
+    void bin_data();
 
 };
 

@@ -42,6 +42,7 @@ double read_param_vector(std::ifstream* file, std::string param_name, double* ou
 std::string read_param_string(std::ifstream* file, std::string param_name);
 
 void setCurrentRate( double rate(double, void*));
+void setCurrentVelInt( double VelInt(double, void*));
 
 int load_params(std::string filename);
 
@@ -63,7 +64,7 @@ extern int USE_ASIMOV_DATA; //Analyse using asimov data
 //Variables needed to make the integration simpler (so they don't need storing as pointers)
 extern double currentE;
 extern double (*currentRate) (double, void*);
-
+extern double (*currentVelInt) (double, void*);
 
 
 
