@@ -184,17 +184,17 @@ double VelInt_maxwell(double v, void* params)
   }
   else if (v < (v_esc - v_lag))
   {
-    vel_integral = sqrt(2)*pow(PI,1.5)*N*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v + v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+    vel_integral = sqrt(2)*pow(PI,1.5)*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v + v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+    vel_integral -= 4*PI*v_rms*v_rms*exp(-0.5*pow(v_esc/v_rms,2));
   }
   else
   {
-    vel_integral = sqrt(2)*pow(PI,1.5)*N*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v_esc)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+    vel_integral = sqrt(2)*pow(PI,1.5)*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v_esc)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+    vel_integral -= 2*PI*v_rms*v_rms*((v_esc+v_lag - v)/(v_lag))*exp(-0.5*pow(v_esc/v_rms,2));
   }
 
-  vel_integral -= 4*PI*N*v_rms*v_rms*exp(-0.5*pow(v_esc/v_rms,2));
-
   //double vel_integral = (1.0/(2*v_lag))*(gsl_sf_erf((v +v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
-  return 2*PI*vel_integral;
+  return 2*PI*N*vel_integral;
 }
 
 //Returns the unnormalised Lisanti et al directionally averaged speed distribution
