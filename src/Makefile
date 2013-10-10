@@ -1,4 +1,9 @@
 
+#Need to install GSL
+
+#Need to install fftw3
+
+
 # Declaration of variables
 CC = g++
 CC_FLAGS = -O3 -Wall -ansi
