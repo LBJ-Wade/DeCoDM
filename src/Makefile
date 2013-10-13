@@ -3,10 +3,14 @@
 
 #Need to install fftw3
 
+#Need to install lapack and lablas for GSL??
+#Check to see if I actually need lapack and lablas - doesn't look like I need GSL
+
+#MAY need to install DarkSUSY
 
 # Declaration of variables
 CC = g++
-CC_FLAGS = -O3 -Wall -ansi
+CC_FLAGS = -O3 #-Wall -ansi
 #-I../cosmomc/source
 
 #TARGET_DIR = /home/ppxbk2/astroraid/cosmomc/source
@@ -25,14 +29,14 @@ LIB_FFTW = -lfftw3
 PATH_LIB_FFTW = /home/ppxbk2/fftw/lib
 INC_FFTW = /home/ppxbk2/fftw/include
 
-LIB_LAPACK = -llapack -lblas
+#LIB_LAPACK = -llapack -lblas
 PATH_LIB_LAPACK = /home/ppxbk2/lapack-3.2
 
 LIB_DS = -lgfortran -ldarksusy -lHB -lFH -lisajet
 PATH_LIB_DS = /home/ppxbk2/DarkSUSY/darksusy-5.1.1/lib
 
-LIBS =  -L$(PATH_LIB_GSL) -L$(PATH_LIB_FFTW) -L$(PATH_LIB_LAPACK) -L$(PATH_LIB_DS)
-LD_FLAGS = $(LIB_GSL) $(LIB_FFTW) $(LIB_LAPACK) $(LIB_DS)
+LIBS =  -L$(PATH_LIB_GSL) -L$(PATH_LIB_FFTW) #-L$(PATH_LIB_LAPACK) 
+LD_FLAGS = $(LIB_GSL) $(LIB_FFTW) $(LIB_LAPACK) 
 INCLUDE = -I$(INC_GSL) -I$(INC_HEADERS) -I$(INC_FFTW)
 
 
@@ -42,7 +46,7 @@ EXEC = run
 SOURCES = $(*.cc)
 OBJECTS = $(SOURCES:.cc=.o)
 
-OBJ_FILES =  DMUtils.o Detector_Class.o  Event_Class.o Parametrisations.o EventRates.o MatrixUtils.o RadonTransform.o
+OBJ_FILES =  DMUtils.o Detector_Class.o Event_Class.o Parametrisations.o EventRates.o MatrixUtils.o RadonTransform.o Distributions.o Astrophysics_Class.o
 HEADER_FILES = $(OBJ_FILES:.o=.h)
 #Main Target
 
@@ -55,23 +59,23 @@ Lib: libdecodm.a
 %.o: %.cc
 	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -c $^ $(LD_FLAGS)
 
-GenerateEvents: GenerateEvents.o $(OBJ_FILES)
-	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o $@ $^ $(LD_FLAGS)
+GenerateEvents: $(OBJ_FILES) 
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o $@ $^ GenerateEvents.cc $(LD_FLAGS)
 	cp GenerateEvents $(TARGET_GENERATE)
 	rm GenerateEvents
 
-GenerateEvents_IC: GenerateEvents_IC.o $(OBJ_FILES)
-	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o $@ $^ $(LD_FLAGS)
+GenerateEvents_IC: $(OBJ_FILES)
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) $(LD_FLAGS) $(LIB_DS) -L$(PATH_LIB_DS) -o $@ $^ GenerateEvents_IC.cc
 	cp GenerateEvents_IC $(TARGET_GENERATE)
 	rm GenerateEvents_IC
 
 CalcRadon: CalcRadon.o $(OBJ_FILES)
-	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o $@ $^ $(LD_FLAGS)
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) $(LD_FLAGS) -o $@ $^ 
 	cp CalcRadon $(TARGET_RADON)
 	rm CalcRadon
 
 CalcLikelihood: CalcLikelihood.cc $(OBJ_FILES)
-	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -c $< $(LD_FLAGS)
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) $(LD_FLAGS) -c $< 
 	cp *.o $(TARGET_DIR)
 
 libdecodm.a: CalcLikelihood $(OBJ_FILES)

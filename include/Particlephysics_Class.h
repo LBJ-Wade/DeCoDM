@@ -1,7 +1,7 @@
 #ifndef THEORYCLASS_H
 #define THEORYCLASS_H
 
-class Theory
+class Particlephysics
 {
     public:
         double m_x;
@@ -13,7 +13,6 @@ class Theory
 
 	//------Function prototypes---------
         
-
 };
 
 

@@ -3,8 +3,9 @@
 
 #include <iostream>
 #include <string>
-#include "ParamSet_Class.h"
 #include <math.h>
+
+#include "ParamSet_Class.h"
 
 #ifndef PI
   #define PI 3.14159265358
@@ -56,16 +57,14 @@ extern int N_expt; //Number of experiments
 extern int mode;   //Speed parametrization mode (see guide...)
 extern int USE_SD; //Use spin-dependent interactions
 extern int USE_SI; //Use spin-dependent interactions
-extern int dir;	   //Use directional information on events
-extern int N_terms; //How many terms are used in the parametrisation
+extern int DIR;	   //Use directional information on events
+//extern int N_terms; //How many terms are used in the parametrisation
 extern int USE_FLOAT_BG; //Use a floating background level in each experiment
 extern int USE_ASIMOV_DATA; //Analyse using asimov data
 
 //Variables needed to make the integration simpler (so they don't need storing as pointers)
 extern double currentE;
 extern double (*currentRate) (double, void*);
-extern double (*currentVelInt) (double, void*);
-
 
 
 //-----------Inline functions...

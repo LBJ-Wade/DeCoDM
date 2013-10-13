@@ -3,8 +3,8 @@
 
 #include "Detector_Class.h"
 #include "ParamSet_Class.h"
-#include "EventRates.h"
 #include "DMUtils.h"
+#include "EventRates.h"
 
 #include "gsl/gsl_sf_legendre.h"
 #include "gsl/gsl_integration.h"
@@ -23,14 +23,13 @@ int N_expt;
 int mode;
 int USE_SD;
 int USE_SI;
-int dir;
-int N_terms;
+int DIR;
+//int N_terms;
 
 int USE_FLOAT_BG;
 int USE_ASIMOV_DATA;
 
 double (*currentRate) (double, void*);
-double (*currentVelInt) (double, void*);
 double currentE;
 
 //------------Function Declarations-------------
@@ -40,11 +39,6 @@ double currentE;
 void setCurrentRate(double rate (double, void*))
 {
   currentRate = rate;
-}
-
-void setCurrentVelInt(double VelInt (double, void*))
-{
- currentVelInt = VelInt;
 }
 
 double N_expected(double rate (double,void*), ParamSet parameters)
@@ -475,7 +469,7 @@ int load_params(std::string filename)
     events_folder = read_param_string(&file, "events_folder");
 
     mode = read_param_int(&file, "mode");
-    dir = read_param_int(&file, "dir");
+    DIR = read_param_int(&file, "DIR");
 
     USE_SD = read_param_int(&file, "USE_SD");
     USE_SI = read_param_int(&file, "USE_SI");
@@ -489,7 +483,7 @@ int load_params(std::string filename)
     std::cout << "Using parameters:" << std::endl;
     std::cout << "\tN_expt:\t" << N_expt << std::endl;
     std::cout << "\tmode:\t" << mode << std::endl;
-    std::cout << "\tdir:\t" << dir << std::endl;
+    std::cout << "\tdir:\t" << DIR << std::endl;
     std::cout << "\tUSE_SI:\t" << USE_SI << std::endl;
     std::cout << "\tUSE_SD:\t" << USE_SD << std::endl;
     std::cout << "\tUSE_FLOAT_BG:\t" << USE_FLOAT_BG << std::endl;
