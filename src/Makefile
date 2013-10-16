@@ -1,7 +1,7 @@
 
 # Declaration of variables
 CC = g++
-CC_FLAGS = -O3 -Wall -ansi
+CC_FLAGS = -O3 -Wall -ansi 
 #-I../cosmomc/source
 
 #TARGET_DIR = /home/ppxbk2/astroraid/cosmomc/source

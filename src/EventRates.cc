@@ -81,7 +81,7 @@ double DMRate(double E, void* params)
 
       double v = v_min(E,m_n[i],m_x);
 
-      rate += expt->frac_n[i]*rate_prefactor(m_n[i], m_x, 1, 0.3)*int_factor*currentVelInt(v, params);
+      rate += expt->frac_n[i]*rate_prefactor(m_n[i], m_x, 1, 0.30)*int_factor*currentVelInt(v, params);
 
     }
 
@@ -334,6 +334,8 @@ double VelInt_Lisanti(double v, void* params)
 
 double VelInt_isotropicBinned(double v, void* params )
 {
+    if (v > v_max) return 0;
+
     double* parameters = ((ParamSet*)params)->theoryParams;
 
     double* bin_values;
