@@ -7,4 +7,5 @@ Detection Codes for Dark Matter experiments
 
   -The code includes the possibility of using Chebyshev polynomial basis - however this is hard-coded and has to be changed manually.
   
-  -Check Mode 0.
+  -Mode 0 currently has the option for a 'double' gaussian distribution . However, you may have to set this manually.
+  
