@@ -33,6 +33,9 @@ double (*currentRate) (double, void*);
 double (*currentVelInt) (double, void*);
 double currentE;
 
+double E_a;
+double E_b;
+
 //------------Function Declarations-------------
 
 
@@ -82,8 +85,16 @@ double N_expected(double rate (double,void*), ParamSet parameters)
   else
   {
     F.function = preConvolvedRate;
+    E_a = expt->E_min;
+    E_b = expt->E_max;
+    
+    double E_low = E_a - 6*deltaE;
+    double E_high = E_b + 6*deltaE;
+    if (E_low < 0) E_low = 0;
+    if (E_high > 150) E_high = 120;
 
-   status = gsl_integration_qag(&F,0,200, 0.1, 0, 5000,6,
+
+   status = gsl_integration_qag(&F,E_low,E_high, 0.1, 0, 5000,6,
                              workspace, &result, &error);
   }
 
@@ -92,7 +103,7 @@ double N_expected(double rate (double,void*), ParamSet parameters)
   {
     result = 0;
     std::cout << "GSL rounding error!" << std::endl;
-  //std::cout << result << std::endl;
+    //std::cout << result << std::endl;
   }
 
   //Free workspace
@@ -136,10 +147,17 @@ double N_expected(double rate (double,void*), ParamSet parameters, double E1, do
   }
   else
   {
-    F.function = convolvedRate;
+    F.function = preConvolvedRate;
+    E_a = E1;
+    E_b = E2;
 
-   status = gsl_integration_qag(&F,E1,E2, 0.1, 0, 5000,6,
-                             workspace, &result, &error);
+    double E_low = E1 - 6*deltaE;
+    double E_high = E2 + 6*deltaE;
+    if (E_low < 0) E_low = 0;
+    if (E_high > 120) E_high = 120;
+
+    status = gsl_integration_qag(&F,E_low,E_high, 0.1, 0, 5000,6,
+				 workspace, &result, &error);
   }
 
 
@@ -499,4 +517,43 @@ int load_params(std::string filename)
   else std::cout << "Unable to open experimental parameter file:\t'" << filename << "'" << std::endl;
 
   return 0;
+}
+
+
+//--------------------------------------
+//--------Chebyshev Polynomials---------
+//--------------------------------------
+
+double ChebyshevP(int order, double x)
+{
+  switch(order)
+    {
+    case 0:
+      return 1.0;
+    case 1:
+      return x;
+    case 2:
+      return 2.0*x*x - 1.0;
+    case 3:
+      return 4.0*pow(x,3.0) -3.0*x;
+    case 4:
+      return 8.0*pow(x,4.0) - 8.0*x*x + 1.0;
+    case 5:
+      return 16.0*pow(x,5.0) - 20.0*pow(x, 3.0) + 5.0*x;
+    case 6:
+      return 32.0*pow(x,6.0) - 48.0*pow(x,4.0) + 18.0*x*x -1.0;
+    case 7:
+      return 64.0*pow(x,7.0) - 112.0*pow(x,5.0) + 56.0*pow(x,3.0) - 7.0*x;
+    case 8:
+      return 128.0*pow(x,8.0) - 256.0*pow(x, 6.0) + 160.0*pow(x, 4.0) - 32.0*x*x + 1.0;
+    case 9:
+      return 256.0*pow(x,9.0) - 576.0*pow(x,7.0) + 432.0*pow(x,5.0) - 120*pow(x,3.0) + 9.0*x;
+    case 10: 
+      return 512.0*pow(x,10.0) - 1280.0*pow(x,8.0) + 1120.0*pow(x, 6.0) - 400.0*pow(x, 4.0) + 50.0*x*x - 1.0;
+    }
+
+  return -1;
+
+
+
 }

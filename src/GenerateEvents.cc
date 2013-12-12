@@ -15,6 +15,7 @@
 
 #include "gsl/gsl_rng.h"
 #include "gsl/gsl_randist.h"
+#include "gsl/gsl_sort_double.h"
 
 #ifndef PI
   #define PI 3.14159265358
@@ -34,6 +35,8 @@ void generateMaxwellEvents_Asimov(Detector* expt, double m_x, double sigma_SI, d
 
 double generateLisantiEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k);
 void generateLisantiEvents_Asimov(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double v0, double v_esc, double k);
+
+double generateRandomEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD);
 
 double generateBGEvents(Detector* expt);
 void generateBGEvents_Asimov(Detector* expt);
@@ -71,6 +74,8 @@ int main(int argc, char *argv[])
   //Load global parameters
   load_params("params.ini");
 
+  std::cout << "NB: Directional data are not accurate..." << std::endl << std::endl;
+
   //Initialise experimental parameters
 
   char numstr[21]; // enough to hold all numbers up to 64-bits
@@ -86,7 +91,6 @@ int main(int argc, char *argv[])
   //-------------------------------------------------------------------------------------------------
 
 
-
   for (int i = 0; i < N_expt; i++)
   {
       sprintf(numstr, "%d", i+1);
@@ -97,7 +101,7 @@ int main(int argc, char *argv[])
       experiments[i].displayParameters();
       generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
       experiments[i].print_data(events_folder + "Events"+std::string(numstr)+".txt");
-      experiments[i].print_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
+      if (experiments[i].USE_BINNED_DATA) experiments[i].print_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
   }
 
 
@@ -170,7 +174,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
 	//std::cout << sigma_v << '\t' << v_lag[2] << std::endl;
 	Ne += generateMaxwellEvents(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v, v_esc);
-	generateMaxwellEvents_Asimov(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v, v_esc);
+	if (expt->USE_BINNED_DATA) generateMaxwellEvents_Asimov(expt, m_x, fraction*sigma_SI, fraction*sigma_SD, v_lag, sigma_v, v_esc);
 
       }
     }
@@ -189,9 +193,15 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
       k = read_param_double(&file, "k");
 
       Ne = generateLisantiEvents(expt, m_x, sigma_SI, sigma_SD, v0, v_esc, k);
-      generateLisantiEvents_Asimov(expt, m_x, sigma_SI, sigma_SD, v0, v_esc, k);
+      if (expt->USE_BINNED_DATA) generateLisantiEvents_Asimov(expt, m_x, sigma_SI, sigma_SD, v0, v_esc, k);
 
     }
+    else if (dist_type == "random")
+      {
+          std::cout << "Using 'random' type distribution..." << std::endl;
+	  Ne = generateRandomEvents(expt, m_x, sigma_SI, sigma_SD);
+
+      }
     else
     {
      std::cout << "dist_type '" <<  dist_type << "' is not valid. Exiting..." << std::endl;
@@ -203,7 +213,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
     //Add BG events
     int No_BG = expt->No();
-    generateBGEvents_Asimov(expt);
+    if (expt->USE_BINNED_DATA) generateBGEvents_Asimov(expt);
     Ne_BG = generateBGEvents(expt);
 
     No_BG = expt->No() - No_BG;
@@ -222,6 +232,89 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
 
 }
+
+double generateRandomEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD)
+{
+    //Arrange parameters in an array
+    double params[3+10];
+
+    //Theoretical parameters
+    params[0] = log10(m_x);
+    params[1] = log10(sigma_SI);
+    params[2] = log10(sigma_SD);
+
+    double g[11];
+    for (int i = 1; i < 10; i++)
+    {
+     g[i] = gsl_ran_flat(r, 0, 1);
+    }
+    g[0] = 0;
+    g[10] = 1;
+    gsl_sort(g, 1, 11);
+    double h[10];
+    for (int i = 0; i < 10; i++)
+    {
+     h[i] = g[i+1] - g[i];
+     params[i+3] = h[i];
+    }
+    N_terms = 10;
+
+  std::ofstream file("rand.txt");
+  if (file.is_open())
+    {
+      for (int i = 0; i < 10; i++)
+      {
+	file << h[i] << std::endl;
+      }
+      file.close();
+    }
+  else std::cout << "Unable to open file rand.txt" << std::endl;
+
+    ParamSet parameters(expt,params);
+
+    //Calculate number of expected and observed events
+    setCurrentVelInt(&VelInt_isotropicBinned);
+    double Ne = expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
+    int No = gsl_ran_poisson(r,Ne);
+
+    setCurrentRate(&DMRate);
+
+    //Initialise rotation matrix
+    //double rot_matrix[9];
+    // calcRotationMatrix(rot_matrix,v_lag);
+
+    for (int N = 0; N < No; )
+    {
+      double E = gsl_ran_flat(r,expt->E_min,expt->E_max);
+
+      double phi = gsl_ran_flat(r,0,2*PI);
+
+      double p_max = convolvedRate(expt->E_min,&parameters);
+      double p = convolvedRate(E,&parameters);
+
+      if (gsl_rng_uniform(r) < p/p_max)
+      {
+	double y = 0;
+	while ((y <= -1)||(y >= 1)) //Is this the correct way of generating things...?
+	{
+	  //-----------------double check that this is the correct distribution-----------------------
+	  //y = ((v_min(E,expt->m_n[0],m_x)/v_lag_length) + gsl_ran_gaussian(r,sigma_v/v_lag_length));
+	}
+	double theta = acos(y);
+
+	//Rotate into correct direction
+	//rotateEvent(&theta,&phi,rot_matrix);
+
+	expt->data.push_back(Event(E,theta,phi));
+	N++;
+      }
+
+    }
+
+    //Return number of expected events (may be required)
+    return Ne;
+}
+
 
 double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v, double v_esc)
 {
@@ -242,10 +335,6 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
     double v_lag_length = sqrt(pow(v_lag[0],2) + pow(v_lag[1],2) + pow(v_lag[2],2));
 
     ParamSet parameters(expt,params);
-
-        std::cout << "------NB:Maxwell directional data is not accurate -------------" << std::endl;
-
-    //Add in a new routine which generates the background events...
 
     //Calculate number of expected and observed events
     setCurrentVelInt(&VelInt_maxwell);
@@ -338,7 +427,7 @@ double generateLisantiEvents(Detector* expt, double m_x, double sigma_SI, double
 
     ParamSet parameters(expt,params);
 
-    std::cout << "------NB: Lisanti directional data is not accurate -------------" << std::endl;
+    //std::cout << "------NB: Lisanti directional data is not accurate -------------" << std::endl;
 
 
 

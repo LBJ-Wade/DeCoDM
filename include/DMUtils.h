@@ -48,6 +48,8 @@ int load_params(std::string filename);
 
 int nCr(int n, int r);
 
+double ChebyshevP(int order, double x);
+
 //------------Global Variables
 
 extern std::string expt_folder;
@@ -60,6 +62,10 @@ extern int dir;	   //Use directional information on events
 extern int N_terms; //How many terms are used in the parametrisation
 extern int USE_FLOAT_BG; //Use a floating background level in each experiment
 extern int USE_ASIMOV_DATA; //Analyse using asimov data
+
+//Define globally stored limits for Ne integration
+extern double E_a;
+extern double E_b;
 
 //Variables needed to make the integration simpler (so they don't need storing as pointers)
 extern double currentE;

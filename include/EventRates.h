@@ -20,6 +20,8 @@ double multipoleRadon(double v_q_tmp, int l_tmp, double rate (double,void*), dou
 double multipoleIntegrand(double v, void* params);
 
 double VelInt_maxwell(double v, void* params);
+double VelInt_maxwell_multi(double v, void* params);
+
 
 double VelInt_isotropicBinned(double v, void* params);
 double VelInt_forwardBinned(double v, void* params);

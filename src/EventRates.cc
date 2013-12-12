@@ -81,7 +81,7 @@ double DMRate(double E, void* params)
 
       double v = v_min(E,m_n[i],m_x);
 
-      rate += expt->frac_n[i]*rate_prefactor(m_n[i], m_x, 1, 0.3)*int_factor*currentVelInt(v, params);
+      rate += expt->frac_n[i]*rate_prefactor(m_n[i], m_x, 1, 0.30)*int_factor*currentVelInt(v, params);
 
     }
 
@@ -106,7 +106,7 @@ double preConvolvedRate(double E, void* params)
   Detector* expt = ((ParamSet*)params)->exptParams;
     double deltaE = expt->dE;
 
-    double r = 0.5*(erf((expt->E_max - E)/(sqrt(2)*expt->dE)) - erf((expt->E_min - E)/(sqrt(2)*expt->dE)))*currentRate(E,params);
+    double r = 0.5*(erf((E_b - E)/(sqrt(2)*expt->dE)) - erf((E_a - E)/(sqrt(2)*expt->dE)))*currentRate(E,params);
 
   //return 0.5*(erf((expt->E_max - E)/(sqrt(2)*expt->dE)) - erf((expt->E_min - E)/(sqrt(2)*expt->dE)))*currentRate(E, params);
   return r;
@@ -167,6 +167,55 @@ double convolvedRate(double E, void* params)
 //-------------------------------------------------------------------------
 //-----------Velocity Integrals--------------------------------------------
 //-------------------------------------------------------------------------
+
+double VelInt_maxwell_multi(double v, void* params)
+{
+  double* parameters = ((ParamSet*)params)->theoryParams;
+  double v_lag[2];
+  double v_rms[2];
+  double frac[2];
+  
+  frac[0] = parameters[3];
+  v_lag[0] = sqrt(pow(parameters[4],2) + pow(parameters[5],2) + pow(parameters[6],2));
+  v_rms[0] = parameters[7];
+  
+  frac[1] = parameters[8];
+  v_lag[1] = sqrt(pow(parameters[9],2) + pow(parameters[10],2) + pow(parameters[11],2));
+  v_rms[1] = parameters[12];
+
+  double v_esc = parameters[13];
+
+  double vel_integral[2];
+
+  for (int i = 0; i < 2; i++)
+    {
+
+      double N = 1.0/(pow(2*PI,1.5)*pow(v_rms[i],3)*gsl_sf_erf(v_esc/(sqrt(2)*v_rms[i])) - 4*PI*v_rms[i]*v_rms[i]*exp(-0.5*pow(v_esc/v_rms[i],2)));
+      vel_integral[i] = 0;
+
+      if (v > (v_esc + v_lag[i]))
+	{
+	  vel_integral[i] = 0;
+	}
+      else if (v < (v_esc - v_lag[i]))
+	{
+	  vel_integral[i] = sqrt(2)*pow(PI,1.5)*(pow(v_rms[i],3)/v_lag[i])*(gsl_sf_erf((v + v_lag[i])/(sqrt(2)*v_rms[i])) - gsl_sf_erf((v -v_lag[i])/(sqrt(2)*v_rms[i])));
+	  vel_integral[i] -= 4*PI*v_rms[i]*v_rms[i]*exp(-0.5*pow(v_esc/v_rms[i],2));
+	}
+      else
+	{
+	  vel_integral[i] = sqrt(2)*pow(PI,1.5)*(pow(v_rms[i],3)/v_lag[i])*(gsl_sf_erf((v_esc)/(sqrt(2)*v_rms[i])) - gsl_sf_erf((v -v_lag[i])/(sqrt(2)*v_rms[i])));
+	  vel_integral[i] -= 2*PI*v_rms[i]*v_rms[i]*((v_esc+v_lag[i] - v)/(v_lag[i]))*exp(-0.5*pow(v_esc/v_rms[i],2));
+	}
+
+      //double vel_integral = (1.0/(2*v_lag))*(gsl_sf_erf((v +v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+       vel_integral[i] *= 2*PI*N;
+
+
+    }
+
+  return frac[0]*vel_integral[0] + frac[1]*vel_integral[1];
+}
 
 double VelInt_maxwell(double v, void* params)
 {
@@ -465,10 +514,10 @@ double VelInt_isotropicPoly(double v, void* params )
     double* polyParams;
     polyParams = (double*)malloc(N_terms*sizeof(double));
     for (int i = 0; i < N_terms; i++)
-    {
+    {      
       polyParams[i] = parameters[i+3];
     }
-
+   
     double vel_integral = multipoleRadon(v, 0, &multipoleIntegrand,polyParams);
 
     free(polyParams);
@@ -577,7 +626,7 @@ double multipoleRadon(double v_q, int l, double integrand (double,void*), double
    //gsl_error_handler_t * old_handler=gsl_set_error_handler_off();
 
 
-    int status = gsl_integration_qag(&F,v_q,v_max, 0, 1e-6, 5000,6,
+  int status = gsl_integration_qag(&F,v_q,v_max, 0, 1e-6, 5000,6,
                              workspace, &result, &error);
 
 			     //if (result < 0) std::cout << "Negative rate!" << std::endl;
@@ -714,7 +763,8 @@ double multipoleIntegrand(double v, void* params)
   {
     //std::cout << parameters[i] << "\t";
     //logf -= pow(alpha,i)*parameters[i];
-    logf -= gsl_sf_legendre_Pl(i, 2*alpha-1)*parameters[i];
+    //logf -= gsl_sf_legendre_Pl(i, 2*alpha-1)*parameters[i];
+    logf -= ChebyshevP(i, 2*alpha-1)*parameters[i];
   }
   //std::cout << std::endl;
 
@@ -815,7 +865,8 @@ double polyf(double v, void* params)
   {
     //std::cout << ((double*)params)[i] << std::endl;
    //logf -= pow(alpha,i)*((double*)params)[i];
-   logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*((double*)params)[i];
+   //logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*((double*)params)[i];
+   logf -= ChebyshevP(i, 2*alpha-1)*((double*)params)[i];
   }
   return v*v*exp(logf);
 }

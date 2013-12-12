@@ -15,6 +15,8 @@
 
 #include "gsl/gsl_integration.h"
 #include "gsl/gsl_errno.h"
+#include "gsl/gsl_spline.h"
+
 
 #ifndef PI
   #define PI 3.14159265358
@@ -80,11 +82,14 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
 	  experiments[i].load_data(events_folder + "Events"+std::string(numstr)+".txt");
 	  if (experiments[i].USE_BINNED_DATA) experiments[i].bin_data();
-	  experiments[i].load_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
+	  if (experiments[i].USE_BINNED_DATA) experiments[i].load_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
     }
 
-  count++;
+ 
   }
+
+  count++;
+  //std::cout << count << std::endl;
 
   int N_params = *num_hard;
   int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
@@ -161,7 +166,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  F.params = parameters;
 
 	  double error;
-	  int status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm, &error);
+	  int status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000, 6, workspace, &norm, &error);
 
 	  if (status ==  GSL_EROUND)
 	  {
@@ -268,7 +273,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
       for (int i = 0; i < N_expt; i++)
 	{
 	  experiments[i].BG_level = pow(10,params[1+USE_SD+USE_SI+i]);
-	  // std::cout << experiments[i].BG_level << "\t";
+	  //std::cout << experiments[i].BG_level << "\t";
 	}
       //std::cout << std::endl;
     }
@@ -325,22 +330,25 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   }
   */
 
-  /*
+
+  //  std::cout << N_terms << std::endl;
+
+  /* 
   std::cout << "Full paramset:" << std::endl;
   for (int i = 0; i < 3; i++)
   {
   std::cout << full_params[i] << "\t";
   }
   std::cout << std::endl;
-
+  
   for (int i = 3; i < 8; i++)
   {
   std::cout << full_params[i] << "\t";
   }
   std::cout << std::endl;
-  */
+  
 
-  /*
+  
   for (int i = 8; i < 13; i++)
   {
   std::cout << full_params[i] << "\t";
@@ -384,6 +392,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	double fraction;
 	double sigma_v;
 	double v_lag[3];
+	double v_esc;
 	char numstr[21]; // enough to hold all numbers up to 64-bits
 	//--------------------------------------------------<<<<<<<<<<<<<<<<<<CURRENTLY ONLY WORKS FOR A SINGLE DISTRIBUTION N_dist=1
 
@@ -397,7 +406,9 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	  //Read in parameter values
 
 	  N_dist = read_param_int(&file, "N_dist");
-
+	  v_esc = read_param_double(&file, "v_esc");
+          if (N_dist == 1)
+	    {
 	  for (int i = 0; i < N_dist; i++)
 	  {
 	    sprintf(numstr, "%d", i+1);
@@ -410,7 +421,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	    // sigma_v = 156;
 	  // double v_lag = 230;
 
-	  double full_params[7];
+	  double full_params[8];
 	  full_params[0] = params[0];
 	  full_params[1] = params[1];
 	  full_params[2] = params[2];
@@ -418,10 +429,43 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	  full_params[4] = v_lag[1];
 	  full_params[5] = v_lag[2];
 	  full_params[6] = sigma_v;
-
+	  full_params[7] = v_esc;
+	  //std::cout << v_lag[0] << "\t" << v_lag[1] << "\t" << v_lag[2] << "\t" << sigma_v << std::endl;
 	  parameters.theoryParams = full_params;
 
 	  setCurrentVelInt(&VelInt_maxwell);
+	    }
+          else if (N_dist == 2)
+	    {
+              double full_params[14];
+              full_params[0] = params[0];
+              full_params[1] = params[1];
+              full_params[2] = params[2];
+
+	      for (int i = 0; i < N_dist; i++)
+		{
+		  sprintf(numstr, "%d", i+1);
+		  fraction = read_param_double(&file, "fraction"+std::string(numstr));
+		  read_param_vector(&file, "v_lag"+std::string(numstr),v_lag);
+		  sigma_v = read_param_double(&file, "sigma_v" + std::string(numstr));
+
+	      // sigma_v = 156;
+	      // double v_lag = 230;
+		  full_params[3+5*i] = fraction;
+		  full_params[4+5*i] = v_lag[0];
+	          full_params[5+5*i] = v_lag[1];
+	          full_params[6+5*i] = v_lag[2];
+	          full_params[7+5*i] = sigma_v;
+	     
+		}
+              full_params[13] = v_esc;
+	      //std::cout << v_lag[0] << "\t" << v_lag[1] << "\t" << v_lag[2] << "\t" << sigma_v << std::endl;
+	      parameters.theoryParams = full_params;
+
+	      setCurrentVelInt(&VelInt_maxwell_multi);
+
+	    }
+          
 
 	  if (expt->USE_BINNED_DATA)
 	  {
@@ -634,6 +678,29 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
       {
 	setCurrentVelInt(&VelInt_isotropicPoly);
 
+	/*
+        int N_p = 100;
+
+        double DRDE[100];
+        double E_range[100];
+        double E1 = expt->E_min;
+        double E2 = expt->E_max;
+        double deltaE = (E2-E1)/N_p;
+        double E = 0;
+        for (int i = 0; i < N_p; i++)
+	{
+          E_range[i] = E1 + i*deltaE;
+	  DRDE[i] = (expt->exposure)*(expt->m_det)*DMRate(E_range[i], &parameters);
+	}
+
+        gsl_interp_accel *acc 
+	  = gsl_interp_accel_alloc ();
+	gsl_spline *spline 
+	  = gsl_spline_alloc (gsl_interp_cspline, N_p);
+
+	 gsl_spline_init (spline, E_range, DRDE, N_p);   
+	*/
+	
 	if (expt->USE_BINNED_DATA)
 	  {
 	   for (int i = 0; i < expt->N_Ebins; i++)
@@ -657,13 +724,18 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	{
 
 	    //Calculate expected number of events
-	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
+	  double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
+          //double Ne = gsl_spline_eval_integ(spline, E1, E2, acc);
+	  //std::cout << Ne << std::endl;
 	    double Ne_BG = (expt->m_det)*(expt->exposure)*(N_expected(&BGRate, parameters));
-	    double Ne_tot = Ne+Ne_BG;
+	    //std::cout << Ne_BG << std::endl;
+	  // double Ne_BG = 1e-10;
+            double Ne_tot = Ne+Ne_BG;
 
 	    //Calculate signal/BG fractions
 	    double f_S = Ne/Ne_tot;
 	    double f_BG = Ne_BG/Ne_tot;
+	    //double f_S = 1;
 
 	      //Calculate poisson part of the log-likelihood
 	      PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
@@ -672,13 +744,20 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	      double eventLike = 0;
 	    for (int i = 0; i < No; i++)
 	      {
+		// eventLike = gsl_spline_eval(spline, expt->data[i].energy, acc)/Ne;
 		setCurrentRate(&DMRate);
+                //eventLike = f_S*(expt->exposure)*(expt->m_det)*DMRate(expt->data[i].energy, &parameters)/Ne;
 		eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
 		setCurrentRate(&BGRate);
 		eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
 		PL -= log(eventLike);
 	      }
+	    //gsl_spline_free (spline);
+	    // gsl_interp_accel_free (acc);
+
 	}
+
+
 
       }
       else if (dir == 1)
