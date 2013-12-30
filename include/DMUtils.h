@@ -39,7 +39,7 @@ double signal_fraction(Detector* expt, ParamSet parameters, double signal_rate (
 //Routines for reading in parameters from files
 int read_param_int(std::ifstream* file, std::string param_name);
 double read_param_double(std::ifstream* file, std::string param_name);
-double read_param_vector(std::ifstream* file, std::string param_name, double* output);
+double read_param_vector(std::ifstream* file, std::string param_name, double* output, int length);
 std::string read_param_string(std::ifstream* file, std::string param_name);
 
 void setCurrentRate( double rate(double, void*));

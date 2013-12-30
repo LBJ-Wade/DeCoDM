@@ -94,8 +94,8 @@ int main(int argc, char *argv[])
     {
       sprintf(numstr, "%d", i+1);
       fraction = read_param_double(&file, "fraction"+std::string(numstr));
-      read_param_vector(&file, "v_lag"+std::string(numstr),v_lag);
-      v_rms = read_param_double(&file, "sigma_v" + std::string(numstr));
+      read_param_vector(&file, "v_lag"+std::string(numstr),v_lag, 3);
+      v_rms = read_param_double(&file, "v_rms" + std::string(numstr));
       v_lag_av = sqrt(v_lag[0]*v_lag[0] + v_lag[1]*v_lag[1] + v_lag[2]*v_lag[2]);
 
       dsinterface_nevents_(&m_x, &sigma_SI, &sigma_SD, &fraction,  &v_rms, &v_lag_av, &result);

@@ -19,7 +19,7 @@ Astrophysics::Astrophysics()
     fraction = NULL;
     v_lag = NULL;
     v_rms = NULL;
- 
+
     vel_params = NULL;
 
     vel_params_forward = NULL;
@@ -51,7 +51,7 @@ double Astrophysics::load_params()
 
       //Read in number of distributions and initialise arrays
       N_dist = read_param_int(&file, "N_dist");
-      fraction = new double[N_dist];      
+      fraction = new double[N_dist];
       v_lag = new double[N_dist];
       v_rms = new double[N_dist];
 
@@ -61,7 +61,7 @@ double Astrophysics::load_params()
       {
 	sprintf(numstr, "%d", i+1);
 	fraction[i] = read_param_double(&file, "fraction"+std::string(numstr));
-	read_param_vector(&file, "v_lag"+std::string(numstr),v_lag_vec);
+	read_param_vector(&file, "v_lag"+std::string(numstr),v_lag_vec, 3);
 	v_rms[i] = read_param_double(&file, "v_rms" + std::string(numstr));
 
         //Calculate length of v_lag
@@ -77,13 +77,32 @@ double Astrophysics::load_params()
 
       velocityIntegral = &velInt_Lisanti;
     }
+    else if (dist_type == "param")
+    {
+      int mode = read_param_int(&file, "mode");
+      if (mode == 1)
+      {
+	int N = read_param_int(&file, "N_vp");
+	initialise_bins(N, 0);
+	read_param_vector(&file, "vel_params", vel_params, N_vp);
+	rescale_bins(0);
+
+	velocityIntegral = &velInt_isotropicBinned;
+      }
+      else
+      {
+	std::cout << "Parametrisation mode '" <<  mode << "' is not valid. Exiting..." << std::endl;
+	exit (EXIT_FAILURE);
+      }
+
+    }
     else
     {
      std::cout << "dist_type '" <<  dist_type << "' is not valid. Exiting..." << std::endl;
      exit (EXIT_FAILURE);
     }
   }
-  else 
+  else
   {
     std::cout << "Unable to open distribution parameter file:\t'" << "dist.txt" << "'" << std::endl;
     exit (EXIT_FAILURE);
@@ -101,21 +120,25 @@ double Astrophysics::load_params()
 double Astrophysics::initialise_bins(int N, int dir)
 {
   N_vp = N;
-  
+
  if (dir == 0)
  {
+   //Initialise arrays
+    vel_params = new double[N_vp];
+    bin_edges = new double[N_vp +1];
     //Calculate bin edges
     calc_bin_edges(0, v_max, N_vp, bin_edges);
-    //Initialise array
-    vel_params = new double[N_vp];
  }
  else
  {
+   vel_params_forward = new double[N_vp];
+   vel_params_backward = new double[N_vp];
+   forward_bin_edges = new double[N_vp +1];
+   backward_bin_edges = new double[N_vp +1];
    //Calculate bin edges
    calc_bin_edges(0, v_max, N_vp, forward_bin_edges);
    calc_bin_edges(0, v_max, N_vp, backward_bin_edges);
-   vel_params_forward = new double[N_vp];
-   vel_params_backward = new double[N_vp];
+
  }
 }
 
@@ -123,7 +146,7 @@ double Astrophysics::initialise_bins(int N, int dir)
 int Astrophysics::normalise_bins()
 {
    double norm = 0;
- 
+
    for (int i = 1; i < N_vp; i++)
    {
        norm += vel_params[i];
@@ -141,8 +164,8 @@ int Astrophysics::normalise_bins()
 
 double Astrophysics::calc_bin_edges(double start, double end, int N_bins, double* edges)
 {
-    bin_edges = new double[N_bins+1];
-    double bin_width = (start - end)/N_bins;
+
+    double bin_width = (end - start)/N_bins;
 
     for (int i = 0; i < N_bins+1; i++)
     {
@@ -194,7 +217,7 @@ double Astrophysics::initialise_terms(int N, int dir)
 
 double Astrophysics::normalise_terms(int dir)
 {
-  //Declare gsl workspace (1000 subintervals) 
+  //Declare gsl workspace (1000 subintervals)
   gsl_integration_workspace * workspace
 	      = gsl_integration_workspace_alloc (3000);
 
@@ -242,7 +265,7 @@ double Astrophysics::normalise_terms(int dir)
 	    std::cout << "GSL rounding error!" << std::endl;
 	    std::cout << norm << std::endl;
       }
-      
+
       F.function = &polyf;
       F.params = NULL;
 
@@ -283,10 +306,10 @@ double velocityIntegral(double v, void* params)
 
 
 // Destructor
-Astrophysics::~Astrophysics() 
+Astrophysics::~Astrophysics()
 {
     //Free up memory
-    delete[] fraction; 
+    delete[] fraction;
     delete[] v_lag;
     delete[] v_rms;
 
@@ -296,5 +319,5 @@ Astrophysics::~Astrophysics()
     delete[] vel_params;
     delete[] vel_params_forward;
     delete[] vel_params_backward;
-    
+
 }

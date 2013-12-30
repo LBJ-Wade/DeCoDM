@@ -14,6 +14,7 @@
 #include "Particlephysics_Class.h"
 #include "EventRates.h"
 #include "DMUtils.h"
+#include "Distributions.h"
 
 #include "gsl/gsl_integration.h"
 #include "gsl/gsl_errno.h"
@@ -91,7 +92,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   count++;
   }
 
-  theory.m_x = pow(10,params[0])
+  theory.m_x = pow(10,params[0]);
   if (USE_SI)
   {
     theory.sigma_SI = pow(10,params[1]);
@@ -148,7 +149,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   {
 
     //N_params++;
-    N_vp = N_params - offset;
+    int N_vp = N_params - offset;
     astro.initialise_terms(N_vp, DIR);
     astro.vel_params[0] = 0;
     for (int i = 1; i < N_vp; i++)
@@ -158,7 +159,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     astro.normalise_terms(DIR);
     astro.velocityIntegral = &velInt_isotropicPoly;
    }
-  
+
 
   if (USE_FLOAT_BG)
     {
@@ -170,7 +171,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
       //std::cout << std::endl;
     }
 
-  
+
 
 
   /*
@@ -183,7 +184,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
   for (int i = 0; i < N_expt; i++)
   {
-    loglike += likelihood(&(experiments[i]), &theory, &astro, DIR);
+    loglike += likelihood(&(experiments[i]), &theory, &astro, mode, DIR);
   }
 
   //    std::cout << -loglike << std::endl << std::endl;

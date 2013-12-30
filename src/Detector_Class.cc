@@ -33,20 +33,44 @@ Detector::Detector(std::string filename)
       sprintf(numstr, "%d", i+1);
       m_n.push_back(read_param_double(&file, "m_"+std::string(numstr)));
       frac_n.push_back(read_param_double(&file, "frac_"+std::string(numstr)));
+
+      //Read in spin parameters
+      J.push_back(read_param_double(&file, "J_"+std::string(numstr)));
+
+      if (J[i]*J[i] > 1e-3)
+      {
+	Sn.push_back(read_param_double(&file, "Sn_"+std::string(numstr)));
+	Sp.push_back(read_param_double(&file, "Sp_"+std::string(numstr)));
+
+	N.push_back(read_param_double(&file, "N00_"+std::string(numstr)));
+	N.push_back(read_param_double(&file, "N11_"+std::string(numstr)));
+
+	alpha.push_back(read_param_double(&file, "alpha00_"+std::string(numstr)));
+	alpha.push_back(read_param_double(&file, "alpha11_"+std::string(numstr)));
+
+	beta.push_back(read_param_double(&file, "beta00_"+std::string(numstr)));
+	beta.push_back(read_param_double(&file, "beta11_"+std::string(numstr)));
+      }
+      else
+      {
+	//Still need to pad the arrays to make sure the indexing works
+	Sn.push_back(0);
+	Sp.push_back(0);
+	N.push_back(0);
+	N.push_back(0);
+	alpha.push_back(0);
+	alpha.push_back(0);
+	beta.push_back(0);
+	beta.push_back(0);
+      }
     }
+
 
     m_det = read_param_double(&file, "m_det");
     exposure = read_param_double(&file, "exposure");
     E_min = read_param_double(&file, "E_min");
     E_max = read_param_double(&file, "E_max");
 
-    Sn = read_param_double(&file, "Sn");
-    Sp = read_param_double(&file, "Sp");
-    zeta = read_param_double(&file, "zeta");
-    N = read_param_double(&file,"N");
-    alpha = read_param_double(&file, "alpha");
-    beta = read_param_double(&file, "beta");
-    J = read_param_double(&file, "J");
     BG_level = read_param_double(&file, "BG_level");
     dE = read_param_double(&file,"dE");
     USE_BINNED_DATA = read_param_int(&file,"USE_BINNED_DATA");
@@ -119,13 +143,26 @@ void Detector::displayParameters()
  std::cout << std::endl;
 
  std::cout << "Spin parameters:" << std::endl;
- std::cout << "\tProton spin <S_p>\t" << Sp << std::endl;
- std::cout << "\tNeutron spin <S_n>\t" << Sn << std::endl;
- std::cout << "\tzeta\t" << zeta << std::endl;
- std::cout << "\tN\t" << N << std::endl;
- std::cout << "\talpha\t" << alpha << std::endl;
- std::cout << "\tbeta\t" << beta << std::endl;
- std::cout << "\tJ\t" << J << std::endl;
+ /*
+ for (int i = 0; i < N_isotopes; i++)
+ {
+   std::cout << "------------Isotope " << (i+1) << ":" << std::endl;
+    std::cout << "\tJ\t" << J[i] << std::endl;
+    if (J[i] > 1e-3)
+    {
+      std::cout << "\tProton spin <S_p>\t" << Sp[i] << std::endl;
+      std::cout << "\tNeutron spin <S_n>\t" << Sn[i] << std::endl;
+      std::cout << "\tN_00\t" << N[2*i] << "\tN_11\t" << N[2*i+1] << std::endl;
+      std::cout << "\talpha_00\t" << alpha[2*i] << "\talpha_11\t" << alpha[2*i+1] << std::endl;
+      std::cout << "\tbeta_00\t" << beta[2*i] << "\tbeta_11\t" << beta[2*i+1] << std::endl;
+    }
+
+ }
+ */
+ //std::cout << "\tJ\t" << J << std::endl;
+ //std::cout << "\tProton spin <S_p>\t" << Sp << std::endl;
+ //std::cout << "\tNeutron spin <S_n>\t" << Sn << std::endl;
+ std::cout << "\t...spin parameters not shown..." << std::endl;
  std::cout << std::endl;
 }
 
@@ -177,26 +214,28 @@ double Detector::SI_formfactor(double E, int i_isotope)
   return F;
 }
 
-double Detector::SD_formfactor(double E, int i_isotope)
+double Detector::SD_formfactor(double E, int i_isotope, int i_component)
 {
   //Cerdeno, Fornasa et al (2012)
+
+  int i = 2*i_isotope + i_component;
 
   //Define conversion factor from amu-->keV
   double amu = 931.5*1000;
 
   //Convert recoil energy to momentum transfer q in keV
-  double  q = sqrt(2*m_n[i_isotope]*amu*E);
+  double  q = sqrt(2*m_n[i]*amu*E);
 
   //Convert q into fm^-1
   q *= (1e-12/1.97e-7);
   //q *= 1e-6;
 
   //NB: b is in fm
-  double b = 1.0*pow(m_n[i_isotope],1.0/6.0);
+  double b = 1.0*pow(m_n[i],1.0/6.0);
 
   double u = (q*b*q*b)/2.0;
 
-  double F = N*((1-beta)*exp(-alpha*u) + beta);
+  double F = N[i]*((1-beta[i])*exp(-alpha[i]*u) + beta[i]);
 
   //Correct normalisation at zero momentum
   if (E == 0) F = 1;
@@ -209,9 +248,12 @@ double Detector::SI_enhancement(int i_isotope)
  return  m_n[i_isotope]*m_n[i_isotope];
 }
 
-double Detector::SD_enhancement() //Watch out there is dependence on ap and an in here...check plus and minus signs...
+double Detector::SD_enhancement(int i_isotope) //Watch out there is dependence on ap and an in here...check plus and minus signs...
 {
-  return (16.0/3.0)*((J+1.0)/J)*pow((Sn+Sp),2);
+  double a_p = 1;
+  double a_n = 1;
+
+  return (16.0/3.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
 }
 
 //----------Input and output routines-------------------------------------------

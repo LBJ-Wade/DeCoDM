@@ -125,7 +125,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
   Astrophysics astro;
 
   astro.load_params();
-
+  //std::cout << "Astro:\t" << astro.v_lag[0] << "\t" << astro.v_rms[0] << "\t" << astro.rho_x << std::endl;
   Particlephysics theory;
   theory.m_x = m_x;
   theory.sigma_SI = sigma_SI;
@@ -142,7 +142,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
   //Generate ordinary events
     Ne = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
-    
+
     int No = gsl_ran_poisson(r,Ne);
 
     setCurrentRate(&DMRate);
@@ -179,7 +179,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
       }
 
     }
- 
+
    //Display signal event numbers
     std::cout << "Signal:\t\t # expected = " << Ne << "; # observed = " << expt->No() << std::endl;
 
@@ -191,7 +191,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
       expt->asimov_data[i] += Ne;
     }
 
-    
+
 
     //Add BG events
     int No_BG = expt->No();

@@ -74,7 +74,8 @@ double DMRate(double E, void* params)
     for (int i = 0; i < expt->N_isotopes; i++)
     {
       double int_factor = 0;
-      if (USE_SD)    int_factor += theory->sigma_SD*expt->SD_formfactor(E,i)*expt->SD_enhancement();
+      //Currently only isoscalar SD scattering (i.e. 0 rather than 1 in the 'component' field)
+      if ((USE_SD)&&(expt->J[i] > 1e-3))	int_factor += theory->sigma_SD*expt->SD_formfactor(E,i, 0)*expt->SD_enhancement(i);
       if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
 
       double v = v_min(E,m_n[i],theory->m_x);

@@ -35,7 +35,6 @@ double currentE;
 //------------Function Declarations-------------
 
 
-
 void setCurrentRate(double rate (double, void*))
 {
   currentRate = rate;
@@ -394,7 +393,7 @@ double read_param_double(std::ifstream* file, std::string param_name)
   return -1;
 }
 
-double read_param_vector(std::ifstream* file, std::string param_name, double* output)
+double read_param_vector(std::ifstream* file, std::string param_name, double* output, int length)
 {
   std::string name;
 
@@ -411,7 +410,7 @@ double read_param_vector(std::ifstream* file, std::string param_name, double* ou
 
       if (name.compare(param_name) == 0)
       {
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < length; i++)
 	{
 	  *file >> output[i];
 	}
