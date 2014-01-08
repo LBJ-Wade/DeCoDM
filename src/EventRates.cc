@@ -763,8 +763,8 @@ double multipoleIntegrand(double v, void* params)
   {
     //std::cout << parameters[i] << "\t";
     //logf -= pow(alpha,i)*parameters[i];
-    //logf -= gsl_sf_legendre_Pl(i, 2*alpha-1)*parameters[i];
-    logf -= ChebyshevP(i, 2*alpha-1)*parameters[i];
+    logf -= gsl_sf_legendre_Pl(i, 2*alpha-1)*parameters[i];
+    //logf -= ChebyshevP(i, 2*alpha-1)*parameters[i];
   }
   //std::cout << std::endl;
 
@@ -865,8 +865,8 @@ double polyf(double v, void* params)
   {
     //std::cout << ((double*)params)[i] << std::endl;
    //logf -= pow(alpha,i)*((double*)params)[i];
-   //logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*((double*)params)[i];
-   logf -= ChebyshevP(i, 2*alpha-1)*((double*)params)[i];
+   logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*((double*)params)[i];
+   //logf -= ChebyshevP(i, 2*alpha-1)*((double*)params)[i];
   }
   return v*v*exp(logf);
 }

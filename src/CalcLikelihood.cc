@@ -51,8 +51,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
   static std::vector<Detector> experiments;
 
-
-
   //Initialise and load in data on first run
   if (count == 0)
   {
@@ -99,17 +97,17 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   //---------------------------------------------------------------------------------------------------
   if (mode == 1)
   {
-      N_params++;
-
+    //N_params++;
       N_terms = N_params-1-offset;
 
-      for (int i = 1+offset; i < (N_terms)+offset; i++)
-	{
-	  //	  std::cout << params[i] << std::endl;
+      //for (int i = 1+offset; i < (N_terms)+1+offset; i++)
+	//{
+	//	  std::cout << params[i] << std::endl;
 	  //      std::cout << params[i + (N_bins/2) -1] << std::endl;
-	  norm += params[i];
+	  //norm += params[i];
 	  //norm2 += params[i+(N_bins/2)-1];
-	}
+          
+	//}
   }
   //---------------------------------------------------------------------------------------------------
   //--------Binned momentum parametrisation: mode = 2--------------------------------------------------
@@ -134,9 +132,11 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   //---------------------------------------------------------------------------------------------------
   if (mode == 3)
   {
+    N_terms = N_params-1-offset;
 
+    /*
     N_params++;
-
+    
     if (dir == 0)
     {
 	//Declare gsl workspace (1000 subintervals)
@@ -177,7 +177,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
       //Free workspace
       gsl_integration_workspace_free (workspace);
       free(parameters);
-
+    
     }
     else if (dir == 1)
     {
@@ -239,6 +239,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  free(parameters1);
 	  free(parameters2);
     }
+    */
   }
 
   //Pack up all the input parameters
@@ -281,32 +282,55 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   if (mode == 1)
   {
     //std::cout << norm << "\t" << norm2 << std::endl;
-    if (norm < 1)
-    {
-      full_params[3] = 1 - norm;
-    }
-    else
-    {
-      *result = 1e30;
-      return 1e30;
-    }
+    //if (norm < 1)
+    //{
+    //  full_params[3] = 1 - norm;
+    //}
+    //else
+    //{
+    //  *result = 1e30;
+    //  return 1e30;
+    //}
+    norm = 0;
+    //full_params[3] = 0;
+    for (int i = 3; i < 3+N_terms; i++)
+      {
+         full_params[i] = -log(params[i-2+offset]);
+         //full_params[i] = params[i-3+offset];
+	 norm += full_params[i];
+      }
+    //full_params[3] = 1- norm;
+    for (int i = 3; i < 3+N_terms; i++)
+      {
+    	full_params[i] = full_params[i]/norm;
+      }
+    
 
 
+    /*
       for (int i = 4; i < (N_fullparams); i++)
 	  {
 	    full_params[i] = params[i-3+offset];
 	  }
-
+    */
   }
   else if (mode == 3)
   {
     if (dir == 0)
     {
+      /*
       full_params[3] = log(norm);
       for (int i = 4; i < (N_fullparams); i++)
       {
 	full_params[i] = params[i-3+offset];
       }
+      */
+
+      for (int i = 3; i < (N_fullparams); i++)
+	{
+	  full_params[i] = params[i-2+offset];
+	}
+
     }
     else
     {
@@ -321,8 +345,8 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     }
   }
 
-
   /*
+  std::cout << *num_hard << std::endl;  
   std::cout << "Input parameters:" << std::endl;
   for (int i = 0; i < *num_hard; i++)
   {
@@ -330,10 +354,9 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   }
   */
 
-
-  //  std::cout << N_terms << std::endl;
-
-  /* 
+    
+  /*
+  std::cout << N_terms << std::endl;  
   std::cout << "Full paramset:" << std::endl;
   for (int i = 0; i < 3; i++)
   {
@@ -346,8 +369,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   std::cout << full_params[i] << "\t";
   }
   std::cout << std::endl;
-  
-
   
   for (int i = 8; i < 13; i++)
   {
