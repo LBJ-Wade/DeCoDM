@@ -383,6 +383,8 @@ double VelInt_Lisanti(double v, void* params)
 
 double VelInt_isotropicBinned(double v, void* params )
 {
+    if (v > v_max) return 0;
+
     double* parameters = ((ParamSet*)params)->theoryParams;
 
     double* bin_values;

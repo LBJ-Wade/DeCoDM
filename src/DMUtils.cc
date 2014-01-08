@@ -209,8 +209,14 @@ double v_min(double E, double m_n, double m_x)
  double mu = reduced_m_GeV(m_n,m_x);
   //double mu = reduced_m(m_n,m_x);
 
+  //double delta = 15;
+
+  //double v = (E*1e-6*(m_n*931.5e-3)/mu + delta*1e-6);
+  //v *= 3e5/(sqrt(2*E*1e-6*m_n*931.5e-3));
+
  //Calculate minimum speed
   return 3e5*sqrt((E/1e6)*(m_n*931.5e-3)/(2*mu*mu));
+  //return v;
   //return 5.154e-25*sqrt((E)*(m_n)/(2*mu*mu));
 
 }

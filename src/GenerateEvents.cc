@@ -41,6 +41,8 @@ double generateRandomEvents(Detector* expt, double m_x, double sigma_SI, double 
 double generateBGEvents(Detector* expt);
 void generateBGEvents_Asimov(Detector* expt);
 
+void printSpectrum(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v, double v_esc);
+
 void calcRotationMatrix(double* rot_matrix, double* v_lag);
 void rotateEvent(double* theta, double* phi, double* rot_matrix);
 
@@ -116,6 +118,8 @@ int main(int argc, char *argv[])
       file.close();
     }
   else std::cout << "Unable to open file input.txt" << std::endl;
+
+
 
 
   //free(experiments);
@@ -354,6 +358,8 @@ double generateMaxwellEvents(Detector* expt, double m_x, double sigma_SI, double
       double phi = gsl_ran_flat(r,0,2*PI);
 
       double p_max = convolvedRate(expt->E_min,&parameters);
+      //double p_max = convolvedRate(15.0*reduced_m_GeV(expt->m_n[0], m_x)/(expt->m_n[0]*931.5e-3),&parameters);
+      //if (p_max1 > p_max) p_max = p_max1;
       double p = convolvedRate(E,&parameters);
 
       if (gsl_rng_uniform(r) < p/p_max)
@@ -563,7 +569,52 @@ void generateBGEvents_Asimov(Detector* expt)
     }
 }
 
+void printSpectrum(Detector* expt, double m_x, double sigma_SI, double sigma_SD, double* v_lag, double sigma_v, double v_esc)
+{
+  //Arrange parameters in an array
+    double params[8];
 
+    //Theoretical parameters
+    params[0] = log10(m_x);
+    params[1] = log10(sigma_SI);
+    params[2] = log10(sigma_SD);
+    params[3] = v_lag[0];
+    params[4] = v_lag[1];
+    params[5] = v_lag[2];
+    params[6] = sigma_v;
+    params[7] = v_esc;
+
+    //Calculate v_lag_length
+    double v_lag_length = sqrt(pow(v_lag[0],2) + pow(v_lag[1],2) + pow(v_lag[2],2));
+
+    ParamSet parameters(expt,params);
+
+        std::cout << "------NB:Maxwell directional data is not accurate -------------" << std::endl;
+
+    //Add in a new routine which generates the background events...
+    //std::cout << 15.0*reduced_m_GeV(expt->m_n[0], m_x)/(expt->m_n[0]*931.5e-3) << std::endl;
+    //Calculate number of expected and observed events
+    setCurrentVelInt(&VelInt_maxwell);
+    double Ne = (N_expected(&DMRate, parameters));
+    //int No = gsl_ran_poisson(r,Ne);
+
+    setCurrentRate(&DMRate);
+
+    //Write a file explaining what inputs were used
+    std::ofstream file("spectrum.txt");
+    if (file.is_open())
+    {
+      double E = 0;
+      double R = 0;
+       for (int i = 1; i < 1000; i++)
+	{
+	  E = i*0.1;
+	  R = convolvedRate(E, &parameters)/Ne;
+	  file << E << "\t" << R << std::endl;
+	}
+      file.close();
+    }
+}
 
 //------------Geometric operations to get all the angles in an x,y,z basis----------
 
