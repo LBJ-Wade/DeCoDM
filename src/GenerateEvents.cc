@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
       std::cout << "*********************************************" << std::endl;
       experiments[i].displayParameters();
       generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
+
       experiments[i].print_data(events_folder + "Events"+std::string(numstr)+".txt");
       experiments[i].print_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
   }
@@ -126,6 +127,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
   astro.load_params();
   //std::cout << "Astro:\t" << astro.v_lag[0] << "\t" << astro.v_rms[0] << "\t" << astro.rho_x << std::endl;
+  //std::cout << "Astro:\t" << astro.dist_type << std::endl;
   Particlephysics theory;
   theory.m_x = m_x;
   theory.sigma_SI = sigma_SI;
@@ -183,22 +185,23 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
    //Display signal event numbers
     std::cout << "Signal:\t\t # expected = " << Ne << "; # observed = " << expt->No() << std::endl;
 
-   //Generate Asimov events
-   Ne = 0;
-   for (int i = 0; i < expt->N_Ebins; i++)
-    {
-      Ne = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
-      expt->asimov_data[i] += Ne;
-    }
-
-
-
     //Add BG events
     int No_BG = expt->No();
-    generateBGEvents_Asimov(expt);
     Ne_BG = generateBGEvents(expt);
-
     No_BG = expt->No() - No_BG;
+
+    //Calculate ASIMOV data if the bin width is defined
+    if ((expt->bin_width > 1e-3))
+    {
+      double Ne_bin = 0;
+
+      for (int i = 0; i < expt->N_Ebins; i++)
+	{
+	  Ne_bin = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
+	  expt->asimov_data[i] += Ne_bin;
+	}
+	generateBGEvents_Asimov(expt);
+    }
 
     //Display BG event numbers
     std::cout << "Background:\t # expected = " << Ne_BG << "; # observed = " << No_BG << std::endl;

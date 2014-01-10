@@ -237,9 +237,6 @@ double Detector::SD_formfactor(double E, int i_isotope, int i_component)
 
   double F = N[i]*((1-beta[i])*exp(-alpha[i]*u) + beta[i]);
 
-  //Correct normalisation at zero momentum
-  if (E == 0) F = 1;
-
   return pow(F,1);
 }
 

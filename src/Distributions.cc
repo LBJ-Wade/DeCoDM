@@ -20,7 +20,7 @@ double v_max = 1000.0;
 
 double velInt_maxwell(double v, Astrophysics* astro)
 {
-  
+
 
   double vel_integral_total = 0;
 

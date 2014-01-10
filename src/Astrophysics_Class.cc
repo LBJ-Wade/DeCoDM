@@ -42,7 +42,7 @@ double Astrophysics::load_params()
     v_esc = read_param_double(&file, "v_esc");
 
     dist_type = read_param_string(&file, "dist_type");
-    std::cout << "Using " << dist_type << " type distribution..." << std::endl;
+    //std::cout << "Using " << dist_type << " type distribution..." << std::endl;
 
     //Read in distribution-specific parameters
     if (dist_type == "maxwell")

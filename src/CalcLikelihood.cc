@@ -25,7 +25,7 @@
 
 //--------Function Prototypes-----------
 
-double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int mode, int dir);
+double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int vmode, int dir);
 
 
 //------------Interface with fortran--------
@@ -44,7 +44,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
   static int count = 0;
 
-
   static std::vector<Detector> experiments;
   Astrophysics astro; //NEED TO WORRY ABOUT STATIC-NESS
   Particlephysics theory;
@@ -60,7 +59,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     if ((USE_SI + USE_SD) < 1)
     {
 	std::cout << "Must specify SI and/or SD interactions in params.ini" << std::endl;
-	return 1e30;
+	exit (EXIT_FAILURE);
     }
 
     //Check to make sure correct 'direction' option is being used
@@ -85,13 +84,17 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  sprintf(numstr, "%d", i+1);
 	  experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
 	  experiments[i].load_data(events_folder + "Events"+std::string(numstr)+".txt");
-	  if (experiments[i].USE_BINNED_DATA) experiments[i].bin_data();
-	  experiments[i].load_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
+	  if (experiments[i].USE_BINNED_DATA)
+	  {
+	    experiments[i].bin_data();
+	    experiments[i].load_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
+	  }
     }
 
   count++;
   }
 
+  //Load in 'theory' parameters from input sample
   theory.m_x = pow(10,params[0]);
   if (USE_SI)
   {
@@ -114,14 +117,22 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
 
   int N_params = *num_hard;
-  int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
+  int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG+ 6*USE_VARY_FF;
 
   //---------------------------------------------------------------------------------------------------
-  //--------Binned Speed parametrisation: mode = 1-------------------------------------------------------
+  //--------Benchmark speed distributions: vmode = 0----------------------------------------------------
   //---------------------------------------------------------------------------------------------------
-  if (mode == 1)
+  if (vmode == 0)
   {
-      //N_params++;
+    //Use parameters from 'dist.txt' file
+    astro.load_params();
+  }
+
+  //---------------------------------------------------------------------------------------------------
+  //--------Binned Speed parametrisation: vmode = 1----------------------------------------------------
+  //---------------------------------------------------------------------------------------------------
+  else if (vmode == 1)
+  {
       double N_vp = N_params-offset;
       astro.initialise_bins(N_vp, DIR);
       astro.vel_params[0] = 0;
@@ -129,38 +140,41 @@ double loglikelihood_(double * params, int* num_hard, double *result)
       {
           astro.vel_params[i] = params[i+offset];
       }
+
+      //Exit if bins cannot be normalised
       if (astro.normalise_bins() == -1) return 1e-30;
+
       astro.rescale_bins(DIR);
       astro.velocityIntegral = &velInt_isotropicBinned;
   }
 
   //---------------------------------------------------------------------------------------------------
-  //--------Binned momentum parametrisation: mode = 2--------------------------------------------------
+  //--------Binned momentum parametrisation: vmode = 2--------------------------------------------------
   //---------------------------------------------------------------------------------------------------
-  if (mode == 2)
+  else if (vmode == 2)
   {
       std::cout << "Momentum binned is not currently supported!" << std::endl;
       exit (EXIT_FAILURE);
   }
   //---------------------------------------------------------------------------------------------------
-  //--------Poly-Exp parametrisation: mode = 3--------------------------------------------------------
+  //--------Poly-Exp parametrisation: vmode = 3--------------------------------------------------------
   //---------------------------------------------------------------------------------------------------
-  if (mode == 3)
+  else if (vmode == 3)
   {
 
     //N_params++;
-    int N_vp = N_params - offset;
+    int N_vp = N_params - offset - 1;
     astro.initialise_terms(N_vp, DIR);
-    astro.vel_params[0] = 0;
-    for (int i = 1; i < N_vp; i++)
+    //astro.vel_params[0] = 0;
+    for (int i = 0; i < N_vp; i++)
     {
-          astro.vel_params[i] = params[i+offset];
+          astro.vel_params[i] = params[i+offset+1];
     }
-    astro.normalise_terms(DIR);
+    //astro.normalise_terms(DIR);
     astro.velocityIntegral = &velInt_isotropicPoly;
    }
 
-
+  //Load in BG values for each experiment
   if (USE_FLOAT_BG)
     {
       for (int i = 0; i < N_expt; i++)
@@ -172,8 +186,21 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     }
 
 
+  //Load in Form Factor parameters for each experiment - only using S_00 at the moment...
+  if (USE_VARY_FF)
+  {
+    for (int k = 0; k < 2; k++)
+    {
+     experiments[0].N[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 1];
+     experiments[0].alpha[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 2];
+     experiments[0].beta[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 3];
+    }
+  }
 
-
+  for (int i = 0; i < experiments[0].N.size(); i++)
+  {
+  //   std::cout << experiments[0].N[i] << std::endl;
+  }
   /*
   std::cout << "Input parameters:" << std::endl;
   for (int i = 0; i < *num_hard; i++)
@@ -184,10 +211,8 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
   for (int i = 0; i < N_expt; i++)
   {
-    loglike += likelihood(&(experiments[i]), &theory, &astro, mode, DIR);
+    loglike += likelihood(&(experiments[i]), &theory, &astro, vmode, DIR);
   }
-
-  //    std::cout << -loglike << std::endl << std::endl;
 
   *result = loglike;
   double LL = 1.0*loglike;
@@ -196,7 +221,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
 
 
-double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int mode, int dir)
+double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int vmode, int dir)
 {
 
     ParamSet parameters(expt,theory, astro);
@@ -205,7 +230,6 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
       //Calculate number of expected and observed events
 
     double PL = 0;
-
 
     if (expt->USE_BINNED_DATA)
     {
@@ -228,6 +252,8 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 	  }
 	  else
 	  {
+	    //std::cout << "rho_x:\t" << astro->rho_x << std::endl;
+
 	    //Calculate expected numbers of events
 	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 	    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
@@ -239,7 +265,10 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 	    double f_BG = Ne_BG/Ne_tot;
 
 
+
 	    PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
+
+	    //std::cout << "Ne_S:\t" << Ne << ";\tNe_BG:\t" << Ne_BG << std::endl;
 
 
 	    //Calculate the event-by-event part
@@ -249,19 +278,15 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 	      if (dir == 0)  //Do it isotropically!
 	      {
 		  setCurrentRate(&DMRate);
-		  eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
+		  eventLike = (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
 		  setCurrentRate(&BGRate);
-		  eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
+		  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
 		  PL -= log(eventLike);
 	      }
 	      else 		//Do it directionally!
 	      {
-		std::cout << "Warning! Mode 0 does not yet support directional data!" << std::endl;
-		//THIS IS DOES NOT WORK
-		//PL -= log((expt->exposure)*(expt->m_det)*diffRate(v_min(expt->data[i].energy,expt->m_n,pow(10,((double *) params)[0])),expt->data[i].theta, expt->data[i].phi, parameters)/Ne);
-	      }
 
-		  //PL -= log((expt->exposure)*(expt->m_det)*binnedRate(v_min(expt->data[i].energy,expt->m_n,pow(10,((double *) params)[0])),expt->data[i].theta, expt->data[i].phi,5,v_edges,parameters)/Ne);
+	      }
 	    }
 	  }
 
