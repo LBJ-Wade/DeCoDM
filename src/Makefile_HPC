@@ -7,7 +7,7 @@ CC_FLAGS = -O3 -Wall -xAVX -ip
 #TARGET_DIR = /home/ppxbk2/astroraid/cosmomc/source
 TARGET_DIR = ../test
 
-TARGET_GENERATE = ..
+TARGET_GENERATE = /home/ppxbk2/MultiNest_neutrinos
 
 LIB_GSL = -lm -lstdc++ -lgsl -lgslcblas
 PATH_LIB_GSL = /usr/gsl/lib64

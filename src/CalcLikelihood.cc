@@ -83,7 +83,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  if (experiments[i].USE_BINNED_DATA) experiments[i].load_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
     }
 
- 
+
   }
 
   count++;
@@ -97,17 +97,17 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   //---------------------------------------------------------------------------------------------------
   if (mode == 1)
   {
-    //N_params++;
-      N_terms = N_params-1-offset;
+    N_params++;
+    N_terms = N_params-1-offset;
 
-      //for (int i = 1+offset; i < (N_terms)+1+offset; i++)
-	//{
+      for (int i = 1+offset; i < (N_terms)+offset; i++)
+	{
 	//	  std::cout << params[i] << std::endl;
 	  //      std::cout << params[i + (N_bins/2) -1] << std::endl;
-	  //norm += params[i];
+	  norm += params[i];
 	  //norm2 += params[i+(N_bins/2)-1];
-          
-	//}
+
+	}
   }
   //---------------------------------------------------------------------------------------------------
   //--------Binned momentum parametrisation: mode = 2--------------------------------------------------
@@ -136,7 +136,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 
     /*
     N_params++;
-    
+
     if (dir == 0)
     {
 	//Declare gsl workspace (1000 subintervals)
@@ -177,7 +177,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
       //Free workspace
       gsl_integration_workspace_free (workspace);
       free(parameters);
-    
+
     }
     else if (dir == 1)
     {
@@ -282,37 +282,39 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   if (mode == 1)
   {
     //std::cout << norm << "\t" << norm2 << std::endl;
-    //if (norm < 1)
-    //{
-    //  full_params[3] = 1 - norm;
-    //}
-    //else
-    //{
-    //  *result = 1e30;
-    //  return 1e30;
-    //}
-    norm = 0;
+    if (norm < 1)
+    {
+      full_params[3] = 1 - norm;
+    }
+    else
+    {
+      *result = 1e30;
+      return 1e30;
+    }
+    //norm = 0;
     //full_params[3] = 0;
-    for (int i = 3; i < 3+N_terms; i++)
-      {
-         full_params[i] = -log(params[i-2+offset]);
+
+
+    //for (int i = 3; i < 3+N_terms; i++)
+      //{
+	//full_params[i] = -log(params[i-2+offset]);
          //full_params[i] = params[i-3+offset];
-	 norm += full_params[i];
-      }
+	 //norm += full_params[i];
+	 //}
     //full_params[3] = 1- norm;
-    for (int i = 3; i < 3+N_terms; i++)
-      {
-    	full_params[i] = full_params[i]/norm;
-      }
-    
+    //for (int i = 3; i < 3+N_terms; i++)
+    //  {
+    //	full_params[i] = full_params[i]/norm;
+    //  }
 
 
-    /*
+
+
       for (int i = 4; i < (N_fullparams); i++)
 	  {
 	    full_params[i] = params[i-3+offset];
 	  }
-    */
+
   }
   else if (mode == 3)
   {
@@ -346,7 +348,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   }
 
   /*
-  std::cout << *num_hard << std::endl;  
+  std::cout << *num_hard << std::endl;
   std::cout << "Input parameters:" << std::endl;
   for (int i = 0; i < *num_hard; i++)
   {
@@ -354,22 +356,22 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   }
   */
 
-    
+
   /*
-  std::cout << N_terms << std::endl;  
+  std::cout << N_terms << std::endl;
   std::cout << "Full paramset:" << std::endl;
   for (int i = 0; i < 3; i++)
   {
   std::cout << full_params[i] << "\t";
   }
   std::cout << std::endl;
-  
+
   for (int i = 3; i < 8; i++)
   {
   std::cout << full_params[i] << "\t";
   }
   std::cout << std::endl;
-  
+
   for (int i = 8; i < 13; i++)
   {
   std::cout << full_params[i] << "\t";
@@ -477,7 +479,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	          full_params[5+5*i] = v_lag[1];
 	          full_params[6+5*i] = v_lag[2];
 	          full_params[7+5*i] = sigma_v;
-	     
+
 		}
               full_params[13] = v_esc;
 	      //std::cout << v_lag[0] << "\t" << v_lag[1] << "\t" << v_lag[2] << "\t" << sigma_v << std::endl;
@@ -486,7 +488,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	      setCurrentVelInt(&VelInt_maxwell_multi);
 
 	    }
-          
+
 
 	  if (expt->USE_BINNED_DATA)
 	  {
@@ -503,7 +505,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
+	     PL += (1.0/expt->N_Ebins)*PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
 	  }
@@ -559,36 +561,61 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
       if (dir == 0)
       {
 	setCurrentVelInt(&VelInt_isotropicBinned);
-	//Calculate expected numbers of events...
-	double Ne = (expt->m_det)*(expt->exposure)*(N_expected(&DMRate, parameters));
-	double Ne_BG = (expt->m_det)*(expt->exposure)*(N_expected(&BGRate, parameters));
-	double Ne_tot = Ne+Ne_BG;
 
-	//Calculate signal/BG fractions
-	double f_S = Ne/Ne_tot;
-	double f_BG = Ne_BG/Ne_tot;
 
-	//Calculate poisson part of the log-likelihood
-	PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
-
-	 if (isnan(PL))
+	 if (expt->USE_BINNED_DATA)
 	  {
-	    return 1e30;
+	   for (int i = 0; i < expt->N_Ebins; i++)
+	   {
+	     double No_bin = 0;
+
+	     if (USE_ASIMOV_DATA)
+	     {
+		No_bin = expt->asimov_data[i];
+	     }
+	     else
+	     {
+		No_bin = expt->binned_data[i];
+	     }
+
+	     PL += (1.0/expt->N_Ebins)*PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
+
+	   }
 	  }
+	  else
+	  {
 
-	//Calculate the event-by-event part
-	double eventLike = 0;
-	for (int i = 0; i < No; i++)
-	  {
-	    setCurrentRate(&DMRate);
-	    eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
-	    setCurrentRate(&BGRate);
-	    eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
-	    PL -= log(eventLike);
-	  }
-	  if (isnan(PL))
-	  {
-	    return 1e30;
+	    //Calculate expected numbers of events...
+	    double Ne = (expt->m_det)*(expt->exposure)*(N_expected(&DMRate, parameters));
+	    double Ne_BG = (expt->m_det)*(expt->exposure)*(N_expected(&BGRate, parameters));
+	    double Ne_tot = Ne+Ne_BG;
+
+	    //Calculate signal/BG fractions
+	    double f_S = Ne/Ne_tot;
+	    double f_BG = Ne_BG/Ne_tot;
+
+	    //Calculate poisson part of the log-likelihood
+	    PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
+
+	    if (isnan(PL))
+	      {
+		return 1e30;
+	      }
+
+	    //Calculate the event-by-event part
+	    double eventLike = 0;
+	    for (int i = 0; i < No; i++)
+	      {
+		setCurrentRate(&DMRate);
+		eventLike = f_S*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne;
+		setCurrentRate(&BGRate);
+		eventLike += f_BG*(expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_BG;
+		PL -= log(eventLike);
+	      }
+	      if (isnan(PL))
+	      {
+		return 1e30;
+	      }
 	  }
       }
       else if (dir == 1)
@@ -714,14 +741,14 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 	  DRDE[i] = (expt->exposure)*(expt->m_det)*DMRate(E_range[i], &parameters);
 	}
 
-        gsl_interp_accel *acc 
+        gsl_interp_accel *acc
 	  = gsl_interp_accel_alloc ();
-	gsl_spline *spline 
+	gsl_spline *spline
 	  = gsl_spline_alloc (gsl_interp_cspline, N_p);
 
-	 gsl_spline_init (spline, E_range, DRDE, N_p);   
+	 gsl_spline_init (spline, E_range, DRDE, N_p);
 	*/
-	
+
 	if (expt->USE_BINNED_DATA)
 	  {
 	   for (int i = 0; i < expt->N_Ebins; i++)
@@ -737,7 +764,7 @@ double likelihood(Detector* expt, double* params, int mode, int dir)
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &DMRate, No_bin,expt->bin_edges[i], expt->bin_edges[i+1] );
+	     PL += (1.0/expt->N_Ebins)*PoissonLike(expt, parameters, &DMRate, No_bin,expt->bin_edges[i], expt->bin_edges[i+1] );
 
 	   }
 	  }

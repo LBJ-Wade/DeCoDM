@@ -76,7 +76,7 @@ double DMRate(double E, void* params)
     for (int i = 0; i < expt->N_isotopes; i++)
     {
       double int_factor = 0;
-      if (USE_SD)    int_factor += sigma_SD*expt->SD_formfactor(E,i)*expt->SD_enhancement();
+      if ((USE_SD)&&(pow(expt->J,2.0) > 1e-5)) int_factor += sigma_SD*expt->SD_formfactor(E,i)*expt->SD_enhancement();
       if (USE_SI)    int_factor += sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
 
       double v = v_min(E,m_n[i],m_x);
@@ -210,7 +210,6 @@ double VelInt_maxwell_multi(double v, void* params)
 
       //double vel_integral = (1.0/(2*v_lag))*(gsl_sf_erf((v +v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
        vel_integral[i] *= 2*PI*N;
-
 
     }
 
@@ -770,6 +769,8 @@ double multipoleIntegrand(double v, void* params)
   }
   //std::cout << std::endl;
 
+  //std::cout << N_terms << std::endl;
+
   //Check these rates!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!------------<
   return (v)*exp(logf)*gsl_sf_legendre_Pl (l, v_q/v);
 
@@ -862,6 +863,8 @@ double polyf(double v, void* params)
  // double alpha = v/v_max;
 
   double logf = 0;
+
+  //std::cout << N_terms << std::endl;
 
   for (int i = 0; i < N_terms; i++)
   {
