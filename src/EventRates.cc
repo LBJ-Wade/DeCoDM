@@ -75,7 +75,7 @@ double DMRate(double E, void* params)
     {
       double int_factor = 0;
       //Currently only isoscalar SD scattering (i.e. 0 rather than 1 in the 'component' field)
-      if ((USE_SD)&&(expt->J[i] > 1e-3))	int_factor += theory->sigma_SD*expt->SD_formfactor(E,i, 0)*expt->SD_enhancement(i);
+      if ((USE_SD)&&(pow(expt->J[i],2) > 1e-6))	int_factor += theory->sigma_SD*expt->SD_formfactor(E,i, 0)*expt->SD_enhancement(i);
       if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
 
       double v = v_min(E,m_n[i],theory->m_x);
@@ -83,7 +83,6 @@ double DMRate(double E, void* params)
       rate += expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*int_factor*astro->velocityIntegral(v, astro);
 
     }
-
     return rate;
 }
 

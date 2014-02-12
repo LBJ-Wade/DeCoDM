@@ -180,7 +180,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
       for (int i = 0; i < N_expt; i++)
 	{
 	  experiments[i].BG_level = pow(10,params[1+USE_SD+USE_SI+i]);
-	  // std::cout << experiments[i].BG_level << "\t";
+	  //std::cout << experiments[i].BG_level << "\t";
 	}
       //std::cout << std::endl;
     }
@@ -197,10 +197,14 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     }
   }
 
-  for (int i = 0; i < experiments[0].N.size(); i++)
-  {
-  //   std::cout << experiments[0].N[i] << std::endl;
-  }
+
+  //for (int i = 0; i < experiments[0].alpha.size(); i++)
+  //{
+    //std::cout << experiments[0].N[0] << "\t" << experiments[0].N[2] << std::endl;
+    //std::cout << experiments[0].alpha[0] << "\t" << experiments[0].alpha[2] << std::endl;
+    //std::cout << experiments[0].beta[0] << "\t" << experiments[0].beta[2] << std::endl;
+  //}
+  //std::cout << std::endl;
   /*
   std::cout << "Input parameters:" << std::endl;
   for (int i = 0; i < *num_hard; i++)
@@ -249,9 +253,9 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 	     PL += PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
-	  }
-	  else
-	  {
+	}
+	else
+	{
 	    //std::cout << "rho_x:\t" << astro->rho_x << std::endl;
 
 	    //Calculate expected numbers of events

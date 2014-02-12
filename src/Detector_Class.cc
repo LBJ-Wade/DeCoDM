@@ -37,7 +37,7 @@ Detector::Detector(std::string filename)
       //Read in spin parameters
       J.push_back(read_param_double(&file, "J_"+std::string(numstr)));
 
-      if (J[i]*J[i] > 1e-3)
+      if (J[i]*J[i] > 1e-6)
       {
 	Sn.push_back(read_param_double(&file, "Sn_"+std::string(numstr)));
 	Sp.push_back(read_param_double(&file, "Sp_"+std::string(numstr)));
@@ -81,7 +81,7 @@ Detector::Detector(std::string filename)
   else std::cout << "Unable to open experimental parameter file:\t'" << filename << "'" << std::endl;
 
   //Calculate bin edges if required
-  if (USE_BINNED_DATA)
+  if (bin_width > 1e-3)
   {
     bin_edges.clear();
    double E = E_min;
@@ -224,18 +224,20 @@ double Detector::SD_formfactor(double E, int i_isotope, int i_component)
   double amu = 931.5*1000;
 
   //Convert recoil energy to momentum transfer q in keV
-  double  q = sqrt(2*m_n[i]*amu*E);
+  double  q = sqrt(2*m_n[i_isotope]*amu*E);
 
   //Convert q into fm^-1
   q *= (1e-12/1.97e-7);
   //q *= 1e-6;
 
   //NB: b is in fm
-  double b = 1.0*pow(m_n[i],1.0/6.0);
+  double b = 1.0*pow(m_n[i_isotope],1.0/6.0);
 
   double u = (q*b*q*b)/2.0;
 
   double F = N[i]*((1-beta[i])*exp(-alpha[i]*u) + beta[i]);
+
+  //std::cout << F << std::endl;
 
   return pow(F,1);
 }

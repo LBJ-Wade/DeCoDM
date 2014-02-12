@@ -190,6 +190,8 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
     Ne_BG = generateBGEvents(expt);
     No_BG = expt->No() - No_BG;
 
+
+
     //Calculate ASIMOV data if the bin width is defined
     if ((expt->bin_width > 1e-3))
     {
