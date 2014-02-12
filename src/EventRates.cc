@@ -74,6 +74,7 @@ double DMRate(double E, void* params)
     for (int i = 0; i < expt->N_isotopes; i++)
     {
       double int_factor = 0;
+
       //Currently only isoscalar SD scattering (i.e. 0 rather than 1 in the 'component' field)
       if ((USE_SD)&&(pow(expt->J[i],2) > 1e-6))	int_factor += theory->sigma_SD*expt->SD_formfactor(E,i, 0)*expt->SD_enhancement(i);
       if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
@@ -104,7 +105,7 @@ double preConvolvedRate(double E, void* params)
   Detector* expt = ((ParamSet*)params)->exptParams;
     double deltaE = expt->dE;
 
-    double r = 0.5*(erf((expt->E_max - E)/(sqrt(2)*expt->dE)) - erf((expt->E_min - E)/(sqrt(2)*expt->dE)))*currentRate(E,params);
+    double r = 0.5*(erf((E_b - E)/(sqrt(2)*expt->dE)) - erf((E_a - E)/(sqrt(2)*expt->dE)))*currentRate(E,params);
 
   //return 0.5*(erf((expt->E_max - E)/(sqrt(2)*expt->dE)) - erf((expt->E_min - E)/(sqrt(2)*expt->dE)))*currentRate(E, params);
   return r;
@@ -161,6 +162,7 @@ double convolvedRate(double E, void* params)
   //Return result of integration
   return result;
 }
+
 
 //------------------------------------------------------------------
 //------------Background rates--------------------------------------

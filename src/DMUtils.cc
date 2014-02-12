@@ -91,6 +91,7 @@ double N_expected(double rate (double,void*), ParamSet parameters)
     if (E_high > 120) E_high = 120;
 
     status = gsl_integration_qag(&F,E_low,E_high, 0.1, 0, 5000,6,
+
                              workspace, &result, &error);
   }
 
@@ -148,6 +149,7 @@ double N_expected(double rate (double,void*), ParamSet parameters, double E1, do
 
     double E_low = E1 - 5*deltaE;
     double E_high = E2 + 5*deltaE;
+
     if (E_low < 0) E_low = 0;
     if (E_high > 120) E_high = 120;
 
@@ -522,6 +524,7 @@ int load_params(std::string filename)
   return 0;
 }
 
+
 //--------------------------------------
 //--------Chebyshev Polynomials---------
 //--------------------------------------
@@ -556,4 +559,3 @@ double ChebyshevP(int order, double x)
 
   return -1;
 }
-

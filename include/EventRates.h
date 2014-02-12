@@ -1,7 +1,7 @@
 #ifndef EVENT_RATES
 #define EVENT_RATES
 
-#include "ParamSet_Class.h"
+//#include "ParamSet_Class.h"
 
 //-----------Function Prototypes----------
 
@@ -13,7 +13,7 @@ double preConvolvedRate(double E, void* params);
 double spreadRate(double E, void* params);
 
 double maxwellRadon(double v, double theta, double phi, double vlagx, double vlagy, double vlagz, double sigma);
-double diffRate (double v, double theta, double phi, ParamSet params);
+//double diffRate (double v, double theta, double phi, ParamSet params);
 //double maxwellRate(double E, void* params);
 
 

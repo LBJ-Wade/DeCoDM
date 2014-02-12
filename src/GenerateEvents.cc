@@ -19,6 +19,7 @@
 
 #include "gsl/gsl_rng.h"
 #include "gsl/gsl_randist.h"
+#include "gsl/gsl_sort_double.h"
 
 #ifndef PI
   #define PI 3.14159265358
@@ -76,6 +77,7 @@ int main(int argc, char *argv[])
   //Check the existence of the experiment files------------------------------------------------------
   //-------------------------------------------------------------------------------------------------
 
+
   char numstr[21]; // enough to hold all numbers up to 64-bits
 
   for (int i = 0; i < N_expt; i++)
@@ -89,7 +91,7 @@ int main(int argc, char *argv[])
       generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
 
       experiments[i].print_data(events_folder + "Events"+std::string(numstr)+".txt");
-      experiments[i].print_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
+      if (experiments[i].USE_BINNED_DATA) experiments[i].print_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
   }
 
 
@@ -146,7 +148,6 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
        scaling = 1.0/(Lisanti_norm(&astro));
     }
 
-
   //Generate ordinary events
     Ne = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
 
@@ -191,6 +192,7 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
    //Display signal event numbers
     std::cout << "Signal:\t\t # expected = " << Ne << "; # observed = " << expt->No() << std::endl;
+
 
     //Add BG events
     int No_BG = expt->No();

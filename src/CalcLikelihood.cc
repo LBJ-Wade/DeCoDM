@@ -18,6 +18,8 @@
 
 #include "gsl/gsl_integration.h"
 #include "gsl/gsl_errno.h"
+#include "gsl/gsl_spline.h"
+
 
 #ifndef PI
   #define PI 3.14159265358
@@ -45,6 +47,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   static int count = 0;
 
   static std::vector<Detector> experiments;
+
   Astrophysics astro; //NEED TO WORRY ABOUT STATIC-NESS
   Particlephysics theory;
 
@@ -91,8 +94,9 @@ double loglikelihood_(double * params, int* num_hard, double *result)
 	  }
     }
 
-  count++;
+    count++;
   }
+
 
   //Load in 'theory' parameters from input sample
   theory.m_x = pow(10,params[0]);
@@ -115,7 +119,6 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     theory.sigma_SD = pow(10,params[1]);
   }
 
-
   int N_params = *num_hard;
   int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG+ 6*USE_VARY_FF;
 
@@ -126,6 +129,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   {
     //Use parameters from 'dist.txt' file
     astro.load_params();
+
   }
 
   //---------------------------------------------------------------------------------------------------
@@ -153,6 +157,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   //---------------------------------------------------------------------------------------------------
   else if (vmode == 2)
   {
+
       std::cout << "Momentum binned is not currently supported!" << std::endl;
       exit (EXIT_FAILURE);
   }
@@ -191,6 +196,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   {
     for (int k = 0; k < 2; k++)
     {
+
      experiments[0].N[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 1];
      experiments[0].alpha[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 2];
      experiments[0].beta[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 3];
@@ -205,7 +211,9 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     //std::cout << experiments[0].beta[0] << "\t" << experiments[0].beta[2] << std::endl;
   //}
   //std::cout << std::endl;
+
   /*
+  std::cout << *num_hard << std::endl;
   std::cout << "Input parameters:" << std::endl;
   for (int i = 0; i < *num_hard; i++)
   {
@@ -250,7 +258,7 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 		No_bin = expt->binned_data[i];
 	     }
 
-	     PL += PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
+	     PL += (1.0/expt->N_Ebins)*PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
 	}
