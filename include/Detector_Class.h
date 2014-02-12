@@ -13,21 +13,19 @@ class Detector
     std::vector<double> frac_n; //Nuclear mass fraction of each element/isotope
     std::vector<double> m_n; //Nuclear mass in amu of each element/isotope
 
+    //Spin parameters - NB: possibly introduce a nuclei class (could keep separate 'nuclear' data files and load them up when needed...)
+    std::vector<double> J;
+    std::vector<double> Sp;
+    std::vector<double> Sn;
+
+    std::vector<double> N;
+    std::vector<double> alpha;
+    std::vector<double> beta;
+
     double m_det; //Total detector mass in kg
     double exposure; //Effective exposure (t_exp x eff)
     double E_min;
     double E_max;
-
-
-    //Spin parameters
-    double Sn;
-    double Sp;
-    double zeta;
-    double N;
-    double alpha;
-    double beta;
-
-    double J; //Total Spin
 
     //Background event levels (in events /keV/kg/day
     double BG_level;
@@ -61,11 +59,11 @@ class Detector
 
     //Nuclear form factors
     double SI_formfactor(double E, int i_isotope);
-    double SD_formfactor(double E, int i_isotope);
+    double SD_formfactor(double E, int i_isotope, int i_component);
 
     //Enhancement factors
     double SI_enhancement(int i_isotope);
-    double SD_enhancement();
+    double SD_enhancement(int i_isotope);
 
     //-------------------------------ADD HERE THE ROUTINE THAT LOADS IN THE DATA???----------
 

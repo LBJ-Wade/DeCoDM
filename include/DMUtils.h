@@ -3,8 +3,9 @@
 
 #include <iostream>
 #include <string>
-#include "ParamSet_Class.h"
 #include <math.h>
+
+#include "ParamSet_Class.h"
 
 #ifndef PI
   #define PI 3.14159265358
@@ -38,13 +39,15 @@ double signal_fraction(Detector* expt, ParamSet parameters, double signal_rate (
 //Routines for reading in parameters from files
 int read_param_int(std::ifstream* file, std::string param_name);
 double read_param_double(std::ifstream* file, std::string param_name);
-double read_param_vector(std::ifstream* file, std::string param_name, double* output);
+double read_param_vector(std::ifstream* file, std::string param_name, double* output, int length);
 std::string read_param_string(std::ifstream* file, std::string param_name);
 
 void setCurrentRate( double rate(double, void*));
 void setCurrentVelInt( double VelInt(double, void*));
 
 int load_params(std::string filename);
+
+double ChebyshevP(int order, double x);
 
 int nCr(int n, int r);
 
@@ -53,19 +56,18 @@ int nCr(int n, int r);
 extern std::string expt_folder;
 extern std::string events_folder;
 extern int N_expt; //Number of experiments
-extern int mode;   //Speed parametrization mode (see guide...)
+extern int vmode;   //Speed parametrization mode (see guide...)
 extern int USE_SD; //Use spin-dependent interactions
 extern int USE_SI; //Use spin-dependent interactions
-extern int dir;	   //Use directional information on events
-extern int N_terms; //How many terms are used in the parametrisation
+extern int DIR;	   //Use directional information on events
+//extern int N_terms; //How many terms are used in the parametrisation
 extern int USE_FLOAT_BG; //Use a floating background level in each experiment
+extern int USE_VARY_FF; //Use varying SD Form Factor in each experiment
 extern int USE_ASIMOV_DATA; //Analyse using asimov data
 
 //Variables needed to make the integration simpler (so they don't need storing as pointers)
 extern double currentE;
 extern double (*currentRate) (double, void*);
-extern double (*currentVelInt) (double, void*);
-
 
 
 //-----------Inline functions...

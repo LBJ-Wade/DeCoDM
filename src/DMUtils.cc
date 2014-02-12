@@ -3,8 +3,8 @@
 
 #include "Detector_Class.h"
 #include "ParamSet_Class.h"
-#include "EventRates.h"
 #include "DMUtils.h"
+#include "EventRates.h"
 
 #include "gsl/gsl_sf_legendre.h"
 #include "gsl/gsl_integration.h"
@@ -20,31 +20,31 @@
 std::string expt_folder;
 std::string events_folder;
 int N_expt;
-int mode;
+int vmode;
 int USE_SD;
 int USE_SI;
-int dir;
-int N_terms;
+int DIR;
+//int N_terms;
 
 int USE_FLOAT_BG;
+int USE_VARY_FF;
 int USE_ASIMOV_DATA;
 
 double (*currentRate) (double, void*);
-double (*currentVelInt) (double, void*);
 double currentE;
 
-//------------Function Declarations-------------
 
+//--------File-scope variables
+double E_a;
+double E_b;
+
+
+//------------Function Declarations-------------
 
 
 void setCurrentRate(double rate (double, void*))
 {
   currentRate = rate;
-}
-
-void setCurrentVelInt(double VelInt (double, void*))
-{
- currentVelInt = VelInt;
 }
 
 double N_expected(double rate (double,void*), ParamSet parameters)
@@ -82,17 +82,23 @@ double N_expected(double rate (double,void*), ParamSet parameters)
   else
   {
     F.function = preConvolvedRate;
+    E_a = expt->E_min;
+    E_b = expt->E_max;
 
-   status = gsl_integration_qag(&F,0,200, 0.1, 0, 5000,6,
+    double E_low = E_a - 5*deltaE;
+    double E_high = E_b + 5*deltaE;
+    if (E_low < 0) E_low = 0;
+    if (E_high > 120) E_high = 120;
+
+    status = gsl_integration_qag(&F,E_low,E_high, 0.1, 0, 5000,6,
                              workspace, &result, &error);
   }
-
 
   if (status ==  GSL_EROUND)
   {
     result = 0;
     std::cout << "GSL rounding error!" << std::endl;
-  //std::cout << result << std::endl;
+    //std::cout << result << std::endl;
   }
 
   //Free workspace
@@ -136,10 +142,17 @@ double N_expected(double rate (double,void*), ParamSet parameters, double E1, do
   }
   else
   {
-    F.function = convolvedRate;
+    F.function = preConvolvedRate;
+    E_a = E1;
+    E_b = E2;
 
-   status = gsl_integration_qag(&F,E1,E2, 0.1, 0, 5000,6,
-                             workspace, &result, &error);
+    double E_low = E1 - 5*deltaE;
+    double E_high = E2 + 5*deltaE;
+    if (E_low < 0) E_low = 0;
+    if (E_high > 120) E_high = 120;
+
+    status = gsl_integration_qag(&F,E_low,E_high, 0.1, 0, 5000,6,
+				 workspace, &result, &error);
   }
 
 
@@ -371,7 +384,7 @@ int read_param_int(std::ifstream* file, std::string param_name)
       }
    }
    std::cout << "Parameter not found: " << param_name << std::endl;
-   return -1;
+   exit (EXIT_FAILURE);
   }
   std::cout << "File not open." << std::endl;
   return -1;
@@ -406,7 +419,7 @@ double read_param_double(std::ifstream* file, std::string param_name)
   return -1;
 }
 
-double read_param_vector(std::ifstream* file, std::string param_name, double* output)
+double read_param_vector(std::ifstream* file, std::string param_name, double* output, int length)
 {
   std::string name;
 
@@ -423,7 +436,7 @@ double read_param_vector(std::ifstream* file, std::string param_name, double* ou
 
       if (name.compare(param_name) == 0)
       {
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < length; i++)
 	{
 	  *file >> output[i];
 	}
@@ -480,29 +493,67 @@ int load_params(std::string filename)
     expt_folder = read_param_string(&file, "expt_folder");
     events_folder = read_param_string(&file, "events_folder");
 
-    mode = read_param_int(&file, "mode");
-    dir = read_param_int(&file, "dir");
+    vmode = read_param_int(&file, "vmode");
+    DIR = read_param_int(&file, "DIR");
 
     USE_SD = read_param_int(&file, "USE_SD");
     USE_SI = read_param_int(&file, "USE_SI");
 
     USE_FLOAT_BG = read_param_int(&file, "USE_FLOAT_BG");
     USE_ASIMOV_DATA = read_param_int(&file, "USE_ASIMOV_DATA");
+    USE_VARY_FF = read_param_int(&file, "USE_VARY_FF");
 
     file.close();
 
     //Display parameter values
     std::cout << "Using parameters:" << std::endl;
     std::cout << "\tN_expt:\t" << N_expt << std::endl;
-    std::cout << "\tmode:\t" << mode << std::endl;
-    std::cout << "\tdir:\t" << dir << std::endl;
+    std::cout << "\tvmode:\t" << vmode << std::endl;
+    std::cout << "\tdir:\t" << DIR << std::endl;
     std::cout << "\tUSE_SI:\t" << USE_SI << std::endl;
     std::cout << "\tUSE_SD:\t" << USE_SD << std::endl;
     std::cout << "\tUSE_FLOAT_BG:\t" << USE_FLOAT_BG << std::endl;
     std::cout << "\tUSE_ASIMOV_DATA:\t" << USE_ASIMOV_DATA << std::endl;
+    std::cout << "\tUSE_VARY_FF:\t" << USE_VARY_FF << std::endl;
     std::cout <<std::endl;
   }
   else std::cout << "Unable to open experimental parameter file:\t'" << filename << "'" << std::endl;
 
   return 0;
 }
+
+//--------------------------------------
+//--------Chebyshev Polynomials---------
+//--------------------------------------
+
+double ChebyshevP(int order, double x)
+{
+  switch(order)
+    {
+    case 0:
+      return 1.0;
+    case 1:
+      return x;
+    case 2:
+      return 2.0*x*x - 1.0;
+    case 3:
+      return 4.0*pow(x,3.0) -3.0*x;
+    case 4:
+      return 8.0*pow(x,4.0) - 8.0*x*x + 1.0;
+    case 5:
+      return 16.0*pow(x,5.0) - 20.0*pow(x, 3.0) + 5.0*x;
+    case 6:
+      return 32.0*pow(x,6.0) - 48.0*pow(x,4.0) + 18.0*x*x -1.0;
+    case 7:
+      return 64.0*pow(x,7.0) - 112.0*pow(x,5.0) + 56.0*pow(x,3.0) - 7.0*x;
+    case 8:
+      return 128.0*pow(x,8.0) - 256.0*pow(x, 6.0) + 160.0*pow(x, 4.0) - 32.0*x*x + 1.0;
+    case 9:
+      return 256.0*pow(x,9.0) - 576.0*pow(x,7.0) + 432.0*pow(x,5.0) - 120*pow(x,3.0) + 9.0*x;
+    case 10:
+      return 512.0*pow(x,10.0) - 1280.0*pow(x,8.0) + 1120.0*pow(x, 6.0) - 400.0*pow(x, 4.0) + 50.0*x*x - 1.0;
+    }
+
+  return -1;
+}
+
