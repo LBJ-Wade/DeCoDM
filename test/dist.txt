@@ -1,18 +1,18 @@
 #Options for 'dist_type': maxwell, lisanti, param
-dist_type param
+dist_type maxwell
 
 #General options
-rho_x	0.3
+rho_x	0.4
 v_esc	544
 
 #'maxwell' options
-N_dist	2
+N_dist	1
 
-fraction1	0.5
-v_lag1	0 0 220
-v_rms1	156
+fraction1	1
+v_lag1	0 0 230
+v_rms1	163
 
-fraction2	0.5
+fraction2	0
 v_lag2	0 0 50
 v_rms2	50
 

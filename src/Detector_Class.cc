@@ -202,6 +202,8 @@ double Detector::SI_formfactor(double E, int i_isotope)
 
     double R1 = sqrt(c*c + 7*PI*PI*a*a/3 - 5*s*s);
 
+   
+
     //Calculate Helm Form Factor squared
     double J1 = gsl_sf_bessel_j1(q*R1);
 
@@ -235,6 +237,9 @@ double Detector::SD_formfactor(double E, int i_isotope, int i_component)
 
   double u = (q*b*q*b)/2.0;
 
+
+  //----------Got rid of N[i]------
+
   double F = N[i]*((1-beta[i])*exp(-alpha[i]*u) + beta[i]);
 
   //std::cout << F << std::endl;
@@ -249,10 +254,11 @@ double Detector::SI_enhancement(int i_isotope)
 
 double Detector::SD_enhancement(int i_isotope) //Watch out there is dependence on ap and an in here...check plus and minus signs...
 {
-  double a_p = 1;
-  double a_n = 1;
+  double a_p = +1;
+  double a_n = +1;
 
-  return (16.0/3.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
+  //return (8.0/3.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
+  return (16.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
 }
 
 //----------Input and output routines-------------------------------------------
