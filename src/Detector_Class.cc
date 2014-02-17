@@ -240,17 +240,27 @@ double Detector::SD_formfactor(double E, int i_isotope, int i_component)
 
   //----------Got rid of N[i]------
 
-  double F = ((1-beta[i])*exp(-alpha[i]*u) + beta[i]);
+  double F = N[i]*((1-beta[i])*exp(-alpha[i]*u) + beta[i]);
 
   if (i_isotope==0)
   {
-     F = exp(-u)*(0.0417889 + u*-0.111171 + pow(u,2)*0.171966 + pow(u,3)*-0.133219 + pow(u,4)*0.0633805 + pow(u,5)*-0.0178388 + pow(u,6)*0.00282476 + pow(u,7)*-2.31681e-4 + pow(u,8)*7.78223e-6 + pow(u,9)*-4.49287e-10)/0.0417889;
+     //------CEFT------
+     F = exp(-u)*(0.0417889 + u*-0.111171 + pow(u,2)*0.171966 + pow(u,3)*-0.133219 + pow(u,4)*0.0633805 + pow(u,5)*-0.0178388 + pow(u,6)*0.00282476 + pow(u,7)*-2.31681e-4 + pow(u,8)*7.78223e-6 + pow(u,9)*-4.49287e-10);
+
+     //------NijmegenII-------
+     //F = exp(-2*u)*(0.0277344 + u*-0.124487 + pow(u,2)*0.328287 + pow(u,3)*-0.481399 +pow(u,4)*0.475646 + pow(u,5)*-0.285177 + pow(u,6)*0.0968193 +pow(u,7)*-0.0170957 + pow(u,8)*0.00123738);
+
   }
   if (i_isotope==1)
 {
-    F = exp(-u)*(0.054731 + pow(u,1)*-0.146897 + pow(u,2)*0.182479 + pow(u,3)*-0.128112 + pow(u,4)*0.0539978 + pow(u,5)*-0.0133335 + pow(u,6)*0.00190579 + pow(u,7)*-1.48373e-4 + pow(u,8)*5.11732e-6 + pow(u,9)*-2.06597e-8)/0.054731;
-}
+    //-----CEFT------
+    F = exp(-u)*(0.054731 + pow(u,1)*-0.146897 + pow(u,2)*0.182479 + pow(u,3)*-0.128112 + pow(u,4)*0.0539978 + pow(u,5)*-0.0133335 + pow(u,6)*0.00190579 + pow(u,7)*-1.48373e-4 + pow(u,8)*5.11732e-6 + pow(u,9)*-2.06597e-8);
 
+
+     //----NijmegenII------
+     //F = exp(-2*u)*(0.046489 +u*-0.225507 +pow(u,2)*0.499045 + pow(u,3)*-0.62243 + pow(u,4)*0.46361 + pow(u,5)*-0.20375 + pow(u,6)*0.0510851 + pow(u,7)*-0.00670516 + pow(u,8)*0.00035659);
+
+}
   //std::cout << F << std::endl;
 
   return pow(F,1);
@@ -267,8 +277,18 @@ double Detector::SD_enhancement(int i_isotope) //Watch out there is dependence o
   double a_n = +1;
 
   //return (8.0/3.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
+
+
+  //THIS ONE IS THE CORRECT ONE!!!
   //return (4.0/3.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
-   return ((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
+
+
+  //return (4.0/3.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n+a_p),2);
+
+  return (4.0*PI)*(1.0/(2*J[i_isotope]+1));
+
+   //THIS MATCHES ARINA ET AL!!!!
+   //return ((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);
 }
 
 //----------Input and output routines-------------------------------------------
