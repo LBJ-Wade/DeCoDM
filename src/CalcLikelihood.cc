@@ -28,7 +28,7 @@
 //--------Function Prototypes-----------
 
 double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int vmode, int dir);
-
+double geteventnumbers(double * params, int* num_hard, double *Ne);
 
 //------------Interface with fortran--------
 
@@ -36,8 +36,225 @@ extern "C" {
 double loglikelihood_(double * params, int* num_hard, double *result);
 }
 
+extern "C" double geteventnumbers_(double * params, int* num_hard, double *Ne)
+{
+    return geteventnumbers(params, num_hard, Ne);
+}
+
+extern "C" { void dsinterface_nevents2_( double*, double*, double*, double*, double*, double*, double* ); }
 
 //------------Function definitions----------
+
+
+double geteventnumbers(double * params, int* num_hard, double *Ne)
+{
+  double loglike = 0;
+
+  static int count = 0;
+
+  static std::vector<Detector> experiments;
+
+  Astrophysics astro; //NEED TO WORRY ABOUT STATIC-NESS
+  Particlephysics theory;
+
+  //Initialise and load in data on first run
+  if (count == 0)
+  {
+    //Load in general parameters
+    load_params("params.ini");
+    astro.load_params();
+
+    //Check to make sure SI and/or SD inteactions are being used
+    if ((USE_SI + USE_SD) < 1)
+    {
+	std::cout << "Must specify SI and/or SD interactions in params.ini" << std::endl;
+	exit (EXIT_FAILURE);
+    }
+
+    //Check to make sure correct 'direction' option is being used
+    if ((DIR != 0)&&(DIR != 1))
+    {
+	std::cout << "Must specify dir = 0 or dir = 1 in params.ini" << std::endl;
+        exit (EXIT_FAILURE);
+    }
+
+
+    if ((DIR == 1))
+    {
+	std::cout << "Directional detection is not currently supported..." << std::endl;
+        exit (EXIT_FAILURE);
+    }
+
+    char numstr[21]; // enough to hold all numbers up to 64-bits
+
+      //Load experimental parameters
+    for (int i = 0; i < N_expt; i++)
+    {
+	  sprintf(numstr, "%d", i+1);
+	  experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
+    }
+
+    count++;
+  }
+
+
+  //Load in 'theory' parameters from input sample
+  theory.m_x = pow(10,params[0]);
+  if (USE_SI)
+  {
+    theory.sigma_SI = pow(10,params[1]);
+
+    if (USE_SD)
+    {
+      theory.sigma_SD = pow(10,params[2]);
+    }
+    else
+    {
+      theory.sigma_SD = 0;
+    }
+  }
+  else
+  {
+    theory.sigma_SI = 0;
+    theory.sigma_SD = pow(10,params[1]);
+  }
+
+  int N_params = *num_hard;
+  int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
+
+  if (N_expt == 1) offset += 6*USE_VARY_FF;
+  if (N_expt == 2) offset += 6*USE_VARY_FF;
+  if (N_expt == 3) offset += 9*USE_VARY_FF;
+
+  //---------------------------------------------------------------------------------------------------
+  //--------Benchmark speed distributions: vmode = 0----------------------------------------------------
+  //---------------------------------------------------------------------------------------------------
+  if (vmode == 0)
+  {
+    //Use parameters from 'dist.txt' file
+    astro.load_params();
+
+  }
+
+  //---------------------------------------------------------------------------------------------------
+  //--------Binned Speed parametrisation: vmode = 1----------------------------------------------------
+  //---------------------------------------------------------------------------------------------------
+  else if ((vmode == 1))
+  {
+    //std::cout << N_params << std::endl;
+      double N_vp = N_params-offset;
+      astro.initialise_bins(N_vp, DIR);
+      astro.vel_params[0] = 0;
+      for (int i = 1; i < N_vp; i++)
+      {
+          astro.vel_params[i] = params[i+offset];
+	  //std::cout << astro.vel_params[i] << std::endl;
+
+      }
+
+      //Exit if bins cannot be normalised
+      if (astro.normalise_bins() == -1) return 1e30;
+
+      astro.rescale_bins(DIR);
+      astro.velocityIntegral = &velInt_isotropicBinned;
+  }
+
+  //---------------------------------------------------------------------------------------------------
+  //--------Binned momentum parametrisation: vmode = 2--------------------------------------------------
+  //---------------------------------------------------------------------------------------------------
+  else if (vmode == 2)
+  {
+
+      std::cout << "Momentum binned is not currently supported!" << std::endl;
+      exit (EXIT_FAILURE);
+  }
+  //---------------------------------------------------------------------------------------------------
+  //--------Poly-Exp parametrisation: vmode = 3--------------------------------------------------------
+  //---------------------------------------------------------------------------------------------------
+  else if ((vmode == 3))
+  {
+
+    //N_params++;
+    int N_vp = N_params - offset - 1;
+    astro.initialise_terms(N_vp, DIR);
+    //astro.vel_params[0] = 0;
+    for (int i = 0; i < N_vp; i++)
+    {
+          astro.vel_params[i] = params[i+offset+1];
+    }
+    //astro.normalise_terms(DIR);
+    astro.velocityIntegral = &velInt_isotropicPoly;
+   }
+  
+  else if ((vmode == 4))
+    {
+      int N_vp = 1000;
+      astro.initialise_bins(N_vp, DIR);
+      //astro.vel_params[0] = 0;
+      for (int i = 0; i < N_vp; i++)
+	{
+          astro.vel_params[i] = params[i+offset+1];
+	  //std::cout << astro.vel_params[i] << std::endl;
+	}
+      //std::cout << std::endl;
+
+      //Exit if bins cannot be normalised
+      //if (astro.normalise_bins() == -1) return 1e30;
+
+      //astro.rescale_bins(DIR);
+      astro.velocityIntegral = &velInt_isotropicBinned;
+    }
+  
+
+  //Load in BG values for each experiment
+  if (USE_FLOAT_BG)
+    {
+      for (int i = 0; i < N_expt; i++)
+	{
+	  experiments[i].BG_level = pow(10,params[1+USE_SD+USE_SI+i]);
+	  //std::cout << experiments[i].BG_level << "\t";
+	}
+      //std::cout << std::endl;
+    }
+
+
+  //Load in Form Factor parameters for each experiment - only using S_00 at the moment...
+  if (USE_VARY_FF)
+  {
+    for (int k = 0; k < 2; k++)
+    {
+
+     experiments[0].N[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 1];
+     experiments[0].alpha[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 2];
+     experiments[0].beta[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 3];
+    }
+
+    experiments[2].N[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 1];
+    experiments[2].alpha[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 2];
+    experiments[2].beta[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 3];
+
+
+  }
+
+
+  for (int i = 0; i < N_expt; i++)
+  {
+    ParamSet parameters(&(experiments[i]),&theory, &astro);
+    Ne[i] = (experiments[i].m_det)*(experiments[i].exposure)*N_expected(&DMRate, parameters);
+  }
+
+ 
+
+  //Ne[3] = dsinterface_nevents2_(&(theory.m_x), &(theory.sigma_SI), &(theory.sigma_SD)
+
+  //mchi, sigmaSI, sigmaSD, VelParams, N_vp, vmode, Ne
+
+  return 0;
+}
+
+
+//-----------------------------------------------------------------------------
+
 
 
 double loglikelihood_(double * params, int* num_hard, double *result)
@@ -120,7 +337,11 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   }
 
   int N_params = *num_hard;
-  int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG+ 6*USE_VARY_FF;
+  int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
+
+  if (N_expt == 1) offset += 6*USE_VARY_FF;
+  if (N_expt == 2) offset += 6*USE_VARY_FF;
+  if (N_expt == 3) offset += 9*USE_VARY_FF;
 
   //---------------------------------------------------------------------------------------------------
   //--------Benchmark speed distributions: vmode = 0----------------------------------------------------
@@ -135,18 +356,21 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   //---------------------------------------------------------------------------------------------------
   //--------Binned Speed parametrisation: vmode = 1----------------------------------------------------
   //---------------------------------------------------------------------------------------------------
-  else if (vmode == 1)
+  else if ((vmode == 1))
   {
+    //std::cout << N_params << std::endl;
       double N_vp = N_params-offset;
       astro.initialise_bins(N_vp, DIR);
       astro.vel_params[0] = 0;
       for (int i = 1; i < N_vp; i++)
       {
           astro.vel_params[i] = params[i+offset];
+	  //std::cout << astro.vel_params[i] << std::endl;
+
       }
 
       //Exit if bins cannot be normalised
-      if (astro.normalise_bins() == -1) return 1e-30;
+      if (astro.normalise_bins() == -1) return 1e30;
 
       astro.rescale_bins(DIR);
       astro.velocityIntegral = &velInt_isotropicBinned;
@@ -164,7 +388,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   //---------------------------------------------------------------------------------------------------
   //--------Poly-Exp parametrisation: vmode = 3--------------------------------------------------------
   //---------------------------------------------------------------------------------------------------
-  else if (vmode == 3)
+  else if ((vmode == 3))
   {
 
     //N_params++;
@@ -178,6 +402,26 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     //astro.normalise_terms(DIR);
     astro.velocityIntegral = &velInt_isotropicPoly;
    }
+  
+  else if ((vmode == 4))
+    {
+      int N_vp = 1000;
+      astro.initialise_bins(N_vp, DIR);
+      //astro.vel_params[0] = 0;
+      for (int i = 0; i < N_vp; i++)
+	{
+          astro.vel_params[i] = params[i+offset+1];
+	  //std::cout << astro.vel_params[i] << std::endl;
+	}
+      //std::cout << std::endl;
+
+      //Exit if bins cannot be normalised
+      //if (astro.normalise_bins() == -1) return 1e30;
+
+      //astro.rescale_bins(DIR);
+      astro.velocityIntegral = &velInt_isotropicBinned;
+    }
+  
 
   //Load in BG values for each experiment
   if (USE_FLOAT_BG)
@@ -201,25 +445,52 @@ double loglikelihood_(double * params, int* num_hard, double *result)
      experiments[0].alpha[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 2];
      experiments[0].beta[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 3];
     }
+
+    experiments[2].N[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 1];
+    experiments[2].alpha[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 2];
+    experiments[2].beta[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 3];
+
+
   }
-
-
-  //for (int i = 0; i < experiments[0].alpha.size(); i++)
-  //{
-    //std::cout << experiments[0].N[0] << "\t" << experiments[0].N[2] << std::endl;
-    //std::cout << experiments[0].alpha[0] << "\t" << experiments[0].alpha[2] << std::endl;
-    //std::cout << experiments[0].beta[0] << "\t" << experiments[0].beta[2] << std::endl;
-  //}
-  //std::cout << std::endl;
 
   /*
-  std::cout << *num_hard << std::endl;
-  std::cout << "Input parameters:" << std::endl;
-  for (int i = 0; i < *num_hard; i++)
-  {
-      std::cout << params[i] << std::endl;
-  }
+  //for (int i = 0; i < experiments[0].alpha.size(); i++)
+    //{
+    std::cout << experiments[0].N[0] << "\t" << experiments[0].N[2] << std::endl;
+    std::cout << experiments[0].alpha[0] << "\t" << experiments[0].alpha[2] << std::endl;
+    std::cout << experiments[0].beta[0] << "\t" << experiments[0].beta[2] << std::endl;
+    //}
+  std::cout << std::endl;
+
+  std::cout << experiments[2].N[0] << std::endl;
+  std::cout << experiments[2].alpha[0] << std::endl;
+  std::cout << experiments[2].beta[0] << std::endl;
+
+  std::cout << std::endl;
   */
+
+
+
+  //Write a file explaining what inputs were used
+
+  /*
+  std::ofstream file("f.txt");
+  if (file.is_open())
+    {  
+       std::cout << *num_hard << std::endl;
+       std::cout << "Input parameters:" << std::endl;
+       for (int i = 0; i < astro.N_vp; i++)
+       {
+           std::cout << params[i] << std::endl;
+           file << astro.vel_params[i] << std::endl;
+       }
+       std::cout << std::endl;
+       file.close();
+       exit (EXIT_FAILURE);       
+    }
+  else std::cout << "Unable to open file f.txt" << std::endl;
+  */
+
 
   for (int i = 0; i < N_expt; i++)
   {
@@ -230,6 +501,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   double LL = 1.0*loglike;
   return LL;
 }
+
 
 
 

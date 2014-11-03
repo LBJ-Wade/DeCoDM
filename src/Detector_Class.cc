@@ -201,7 +201,9 @@ double Detector::SI_formfactor(double E, int i_isotope)
     double c = (1.23*(pow(m_n[i_isotope],(1.0/3.0))) - 0.60);
 
     double R1 = sqrt(c*c + 7*PI*PI*a*a/3 - 5*s*s);
-
+    //double x = 1.2*pow(m_n[i_isotope],(1.0/3.0));
+    //s = 1;
+    //double R1 = sqrt(x*x - 5*s*s);
    
 
     //Calculate Helm Form Factor squared
@@ -233,7 +235,9 @@ double Detector::SD_formfactor(double E, int i_isotope, int i_component)
   //q *= 1e-6;
 
   //NB: b is in fm
-  double b = 1.0*pow(m_n[i_isotope],1.0/6.0);
+  //double b = 1.0*pow(m_n[i_isotope],1.0/6.0);
+
+  double b = sqrt((41.467/(45.0*pow(m_n[i_isotope],-1.0/3.0) - 25.0*pow(m_n[i_isotope],-2.0/3.0))));
 
   double u = (q*b*q*b)/2.0;
 
@@ -245,7 +249,7 @@ double Detector::SD_formfactor(double E, int i_isotope, int i_component)
   if (i_isotope==0)
   {
      //------CEFT------
-     F = exp(-u)*(0.0417889 + u*-0.111171 + pow(u,2)*0.171966 + pow(u,3)*-0.133219 + pow(u,4)*0.0633805 + pow(u,5)*-0.0178388 + pow(u,6)*0.00282476 + pow(u,7)*-2.31681e-4 + pow(u,8)*7.78223e-6 + pow(u,9)*-4.49287e-10);
+     //F = exp(-u)*(0.0417889 + u*-0.111171 + pow(u,2)*0.171966 + pow(u,3)*-0.133219 + pow(u,4)*0.0633805 + pow(u,5)*-0.0178388 + pow(u,6)*0.00282476 + pow(u,7)*-2.31681e-4 + pow(u,8)*7.78223e-6 + pow(u,9)*-4.49287e-10);
 
      //------NijmegenII-------
      //F = exp(-2*u)*(0.0277344 + u*-0.124487 + pow(u,2)*0.328287 + pow(u,3)*-0.481399 +pow(u,4)*0.475646 + pow(u,5)*-0.285177 + pow(u,6)*0.0968193 +pow(u,7)*-0.0170957 + pow(u,8)*0.00123738);
@@ -254,7 +258,7 @@ double Detector::SD_formfactor(double E, int i_isotope, int i_component)
   if (i_isotope==1)
 {
     //-----CEFT------
-    F = exp(-u)*(0.054731 + pow(u,1)*-0.146897 + pow(u,2)*0.182479 + pow(u,3)*-0.128112 + pow(u,4)*0.0539978 + pow(u,5)*-0.0133335 + pow(u,6)*0.00190579 + pow(u,7)*-1.48373e-4 + pow(u,8)*5.11732e-6 + pow(u,9)*-2.06597e-8);
+    //F = exp(-u)*(0.054731 + pow(u,1)*-0.146897 + pow(u,2)*0.182479 + pow(u,3)*-0.128112 + pow(u,4)*0.0539978 + pow(u,5)*-0.0133335 + pow(u,6)*0.00190579 + pow(u,7)*-1.48373e-4 + pow(u,8)*5.11732e-6 + pow(u,9)*-2.06597e-8);
 
 
      //----NijmegenII------
@@ -285,7 +289,7 @@ double Detector::SD_enhancement(int i_isotope) //Watch out there is dependence o
 
   //return (4.0/3.0)*((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n+a_p),2);
 
-  return (4.0*PI)*(1.0/(2*J[i_isotope]+1));
+  return (16.0*PI/3.0)*(1.0/(2*J[i_isotope]+1));
 
    //THIS MATCHES ARINA ET AL!!!!
    //return ((J[i_isotope]+1.0)/J[i_isotope])*pow((a_n*Sn[i_isotope]+a_p*Sp[i_isotope]),2);

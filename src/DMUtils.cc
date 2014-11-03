@@ -38,6 +38,45 @@ double currentE;
 double E_a;
 double E_b;
 
+//------Interface with C, if required--------
+extern "C" double read_param_double(char *filename, char *param_name)
+{
+  double value = 0;
+  std::ifstream file (filename);
+  if (file.is_open())
+  {
+    value = read_param_double(&file, param_name);
+     file.close();
+  }
+  else
+    {
+      std::cout << "File <" << filename << ">  not found..." << std::endl;
+      exit(0);
+    }
+
+  return value;
+}
+
+
+extern "C" int read_param_int(char *filename, char *param_name)
+{
+  int value = 0;
+  std::ifstream file (filename);
+  if (file.is_open())
+    {
+      value =  read_param_int(&file, param_name);
+      file.close();
+    }
+  else
+    {
+      std::cout << "File <" << filename << "> not found..." << std::endl;
+      exit(0);
+    }
+
+  return value;
+}
+
+
 
 //------------Function Declarations-------------
 
@@ -293,6 +332,8 @@ double PoissonLike(Detector* expt, ParamSet parameters, double signal_rate (doub
 
   double Ne_tot = Ne+Ne_BG;
 
+  //if (Ne_tot < 1e-12) Ne_tot = 1e-12;
+
   return Ne_tot - No*log(Ne_tot) + logfactNo(No);
 }
 
@@ -485,7 +526,7 @@ int load_params(std::string filename)
 {
   //Load global parameters (rho_0 etc.) from filename
 
-  //Open detector parameter file
+  //Open parameter file
   std::ifstream file (filename.c_str());
   if (file.is_open())
   {
@@ -519,7 +560,7 @@ int load_params(std::string filename)
     std::cout << "\tUSE_VARY_FF:\t" << USE_VARY_FF << std::endl;
     std::cout <<std::endl;
   }
-  else std::cout << "Unable to open experimental parameter file:\t'" << filename << "'" << std::endl;
+  else std::cout << "Unable to open parameter file:\t'" << filename << "'" << std::endl;
 
   return 0;
 }

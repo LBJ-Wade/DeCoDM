@@ -27,7 +27,7 @@ void printEvents(int No, double exposure, std::string filename);
 void printAsimovEvents(double Ne, std::string filename);
 
 extern "C" { void dsinterface_nevents_( double*, double*, double*, double*, double*, double*, double* ); }
-extern "C" { void dsinterface_init_();}
+extern "C" { void dsinterface_init_( double*, int*, int*);}
 //--------Main - Event Generator---------
 int main(int argc, char *argv[])
 {
@@ -68,12 +68,19 @@ int main(int argc, char *argv[])
   //Load global parameters
   load_params("params.ini");
 
-  //Initialise DarkSUSY
-   dsinterface_init_();
+
+  //Read in decay channel parameters...
+  int decay_channel;
+  std::ifstream paramfile ("params.ini");
+  if (paramfile.is_open())
+    {
+      decay_channel = read_param_int(&paramfile, "decay_channel");
+      paramfile.close();
+    }
+  else std::cout << "Unable to open parameter file:\t'" << "params.ini" << "'" << std::endl;
 
 
   //Read in speed distribution parameters
-
 
   double Ne = 0;
   double result = 0;
@@ -83,12 +90,17 @@ int main(int argc, char *argv[])
   {
     //Read in parameter values
     int N_dist = read_param_int(&file, "N_dist");
-
+    double rho = read_param_double(&file, "rho_x");
     double v_rms;
     double v_lag[3];
     double v_lag_av;
     double fraction;
     char numstr[21]; // enough to hold all numbers up to 64-bits
+
+
+    //Initialise DarkSUSY
+    dsinterface_init_(&rho, &N_dist, &decay_channel);
+
 
     for (int i = 0; i < N_dist; i++)
     {
@@ -105,6 +117,7 @@ int main(int argc, char *argv[])
     file.close();
   }
   else std::cout << "Unable to open distribution parameter file:\t'" << "dist.txt" << "'" << std::endl;
+
 
   int No = gsl_ran_poisson(r, Ne);
   if (USE_ASIMOV)
