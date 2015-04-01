@@ -6,6 +6,8 @@
 
 #include "DMUtils.h"
 #include "Detector_Class.h"
+#include "Neutrinos.h"
+#include "ParamSet_Class.h"
 
 #include "gsl/gsl_sf.h"
 
@@ -32,6 +34,8 @@ Detector::Detector(std::string filename)
     {
       sprintf(numstr, "%d", i+1);
       m_n.push_back(read_param_double(&file, "m_"+std::string(numstr)));
+      N_p.push_back(read_param_double(&file, "N_p_"+std::string(numstr)));
+      N_n.push_back(read_param_double(&file, "N_n_"+std::string(numstr)));
       frac_n.push_back(read_param_double(&file, "frac_"+std::string(numstr)));
 
       //Read in spin parameters
@@ -70,12 +74,15 @@ Detector::Detector(std::string filename)
     exposure = read_param_double(&file, "exposure");
     E_min = read_param_double(&file, "E_min");
     E_max = read_param_double(&file, "E_max");
-
+    start_time = read_param_double(&file, "start_time");
+    
+      
     BG_level = read_param_double(&file, "BG_level");
     dE = read_param_double(&file,"dE");
     USE_BINNED_DATA = read_param_int(&file,"USE_BINNED_DATA");
     if (USE_BINNED_DATA == -1) USE_BINNED_DATA = 0;
     bin_width = read_param_double(&file, "bin_width");
+    tbin_width = read_param_double(&file, "tbin_width");
     file.close();
   }
   else std::cout << "Unable to open experimental parameter file:\t'" << filename << "'" << std::endl;
@@ -88,25 +95,52 @@ Detector::Detector(std::string filename)
    while (E <= E_max)
    {
         bin_edges.push_back(E);
-	E += bin_width;
+	    E += bin_width;
    }
 
     N_Ebins = bin_edges.size() -1;
     binned_data.clear();
     binned_data.resize(N_Ebins,0);
-
-    asimov_data.resize(N_Ebins,0.0);
+      
+    tbin_edges.clear();
+    double t = start_time;
+    while (t <= start_time+exposure)
+    {
+        tbin_edges.push_back(t);
+        t += tbin_width;
+    }
+    asimov_data.resize(N_Ebins*N_tbins,0.0);
 
     //for (int i = 0; i < (N_Ebins+1); i++)
     //{
     // std::cout << bin_edges[i] << "\t";
     //}
     //std::cout << std::endl;
+	
+	//Load neutrino data
+	A_nu = 1.0;
+	ParamSet parameters(this,NULL, NULL);
+	LoadFluxTable();
+	//double total_N = 0.0;
+	//std::cout << E_min_v(1e4, m_n[0]) << std::endl;
+	//double p = N_expected(&NeutrinoRate,parameters, 1e4 - E_min_v(1e4, m_n[0]),10e4);
+	//double r = N_expected(&NeutrinoRate,parameters, E_min_v(1e4, m_n[0]),10e4);
+	//std::cout << "Here: " << p/r << std::endl;
+	for (int i = 0; i < N_Ebins; i++)
+	{
+	    neutrino_data.push_back(m_det*exposure*N_expected(&NeutrinoRate,parameters, bin_edges[i], bin_edges[i+1]));
+		//total_N += neutrino_data[i];
+		//neutrino_data.push_back(0.0);
+		//std::cout << neutrino_data[i] << std::endl;
+    }
+	ClearFluxTable();
+	//std::cout << "Total number of neutrino scattering events is " <<  total_N << std::endl;
 
   }
 
 }
 
+//------------------------------------------
 //Count data in each bin
 void Detector::bin_data()
 {
@@ -116,7 +150,7 @@ void Detector::bin_data()
 
       while ((data[i].energy < bin_edges[j])||(data[i].energy > bin_edges[j+1]))
       {
-	j++;
+	      j++;
       }
       binned_data[j]++;
    }

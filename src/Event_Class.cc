@@ -9,13 +9,13 @@
 //Print to screen
 void Event::displayEvent()
 {
-  std::cout << "E (keV): "<< energy << "\t theta (rad): " << theta << "\t phi (rad): " << phi << std::endl; 
+  std::cout << "E (keV): "<< energy << "\t theta (rad): " << theta << "\t phi (rad): " << phi << std::endl;
 }
 
 //Print Event into a line in outputfile
 void Event::printEvent(std::ofstream* outputfile)
 {
-  *outputfile << energy << "\t" << theta << "\t" << phi << std::endl; 
+  *outputfile << energy << "\t" << theta << "\t" << phi << std::endl;
 }
 
 #endif

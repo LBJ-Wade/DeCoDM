@@ -15,6 +15,7 @@
 #include "EventRates.h"
 #include "DMUtils.h"
 #include "Distributions.h"
+#include "Neutrinos.h"
 
 #include "gsl/gsl_integration.h"
 #include "gsl/gsl_errno.h"
@@ -27,13 +28,19 @@
 
 //--------Function Prototypes-----------
 
+double loglikelihood(double * params, int* num_hard, double *result);
 double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int vmode, int dir);
 double geteventnumbers(double * params, int* num_hard, double *Ne);
+double RecalcAsimovData(double m_x, double sigma_SI, double sigma_SD);
+double CalcAsimovLike(double m_x, double sigma_SI, double sigma_SD,double A_day, double A_night);
+
+static std::vector<Detector> experiments;
 
 //------------Interface with fortran--------
 
-extern "C" {
-double loglikelihood_(double * params, int* num_hard, double *result);
+extern "C" double loglikelihood_(double * params, int* num_hard, double *result)
+{
+	return loglikelihood(params, num_hard, result);
 }
 
 extern "C" double geteventnumbers_(double * params, int* num_hard, double *Ne)
@@ -52,7 +59,9 @@ double geteventnumbers(double * params, int* num_hard, double *Ne)
 
   static int count = 0;
 
-  static std::vector<Detector> experiments;
+  //static std::vector<Detector> experiments;
+
+
 
   Astrophysics astro; //NEED TO WORRY ABOUT STATIC-NESS
   Particlephysics theory;
@@ -257,13 +266,15 @@ double geteventnumbers(double * params, int* num_hard, double *Ne)
 
 
 
-double loglikelihood_(double * params, int* num_hard, double *result)
+double loglikelihood(double * params, int* num_hard, double *result)
 {
   double loglike = 0;
 
   static int count = 0;
 
-  static std::vector<Detector> experiments;
+  //static std::vector<Detector> experiments;
+
+
 
   Astrophysics astro; //NEED TO WORRY ABOUT STATIC-NESS
   Particlephysics theory;
@@ -271,6 +282,9 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   //Initialise and load in data on first run
   if (count == 0)
   {
+	  //Initialise neutrino tables
+	  //LoadFluxTable();
+	  
     //Load in general parameters
     load_params("params.ini");
     astro.load_params();
@@ -335,6 +349,7 @@ double loglikelihood_(double * params, int* num_hard, double *result)
     theory.sigma_SI = 0;
     theory.sigma_SD = pow(10,params[1]);
   }
+
 
   int N_params = *num_hard;
   int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
@@ -495,11 +510,171 @@ double loglikelihood_(double * params, int* num_hard, double *result)
   for (int i = 0; i < N_expt; i++)
   {
     loglike += likelihood(&(experiments[i]), &theory, &astro, vmode, DIR);
+	//std::cout << loglike << std::endl;
   }
 
+  
+  
   *result = loglike;
   double LL = 1.0*loglike;
   return LL;
+}
+
+//Maybe this wants to be in the CalcLikelihood file - it definitely does
+
+double RecalcAsimovData(double m_x, double sigma_SI, double sigma_SD)
+{
+	static int count = 0;
+	//Check to make sure the detector data has been loaded from file...
+	if (count == 0)
+	{
+        //Load global parameters
+        load_params("params.ini");
+	
+	    char numstr[21]; // enough to hold all numbers up to 64-bits
+
+	      //Load experimental parameters
+	    for (int i = 0; i < N_expt; i++)
+	    {
+		  sprintf(numstr, "%d", i+1);
+		  experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
+	    }
+		
+	    count++;
+	}
+	
+	double A_daynight = 0.00;
+	//double A_night = 0.96;
+	
+	
+    Astrophysics astro;
+
+    astro.load_params();
+	
+    Particlephysics theory;
+	Particlephysics underlying;
+    theory.m_x = m_x;
+    theory.sigma_SI = sigma_SI;
+    theory.sigma_SD = sigma_SD;
+	
+	underlying.m_x = 100;
+	underlying.sigma_SI = 1e-46;
+	underlying.sigma_SD = 0;
+
+    double scaling = 1;
+    if (astro.dist_type == "lisanti")
+      {
+         scaling = 1.0/(Lisanti_norm(&astro));
+      }
+	
+	for (int j = 0; j < N_expt; j++)
+	{
+		Detector* expt = &(experiments[j]); 
+		ParamSet parameters(expt,&theory, &astro);
+		ParamSet param_underlying(expt, &underlying, &astro);
+	    //Calculate ASIMOV data if the bin width is defined
+	    if ((expt->bin_width > 1e-3))
+	    {
+	        double Ne_bin = 0;
+
+	        for (int i = 0; i < expt->N_Ebins; i++)
+		    {
+			  //First need to reset!!!
+			  expt->asimov_data[i] = 0;
+			  Ne_bin = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
+			  expt->asimov_data[i] += Ne_bin;
+			  //Ne_bin = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, param_underlying,expt->bin_edges[i], expt->bin_edges[i+1]));
+			  //expt->asimov_data[i] += Ne_bin;
+			  //std::cout << Ne_bin << std::endl;
+		      Ne_bin = expt->m_det*expt->exposure*(N_expected(&BGRate, parameters, expt->bin_edges[i], expt->bin_edges[i+1]));
+		      expt->asimov_data[i] += Ne_bin;
+			  //expt->asimov_data[i] += expt->neutrino_data[i]*(1 + pow(-1,j)*A_daynight);
+			  
+			  //std::cout << expt->neutrino_data[i]*(1 + pow(-1,j)*A_daynight) << std::endl;
+			}
+			
+			//std::cout << expt->asimov_data[0] << std::endl;
+			//generateBGEvents_Asimov(expt);
+			//generateNeutrinoEvents_Asimov(expt);
+	    }
+		
+	}
+	
+}
+
+double CalcAsimovLike(double m_x, double sigma_SI, double sigma_SD, double A_day, double A_night)
+{
+	//NOTE - I need to maximise the two likelihoods separately!!!
+	
+	//Note that the neutrino fluxes are calculated only when the file is opened,
+	//so this is fine - it only affects the likelihood
+	//experiments[0].A_nu = A_day*(1+A_night);
+	experiments[0].A_nu = A_day;
+	//experiments[1].A_nu = A_day*(1-A_night);
+	//if (experiments.size() > 1)  experiments[1].A_nu = A_flux*(1.0-A_daynight);
+
+	double loglike = 0;
+	//Be careful, I'm doing something a little funny here!
+	
+	double A_day_true = 1.00;
+	double A_night_true = 0.00;
+
+    Astrophysics astro;
+
+    astro.load_params();
+	
+    Particlephysics theory;
+    theory.m_x = m_x;
+    theory.sigma_SI = sigma_SI;
+    theory.sigma_SD = sigma_SD;
+
+    //double scaling = 1;
+    //if (astro.dist_type == "lisanti")
+    //  {
+    //     scaling = 1.0/(Lisanti_norm(&astro));
+    //  }
+    for (int i = 0; i < N_expt; i++)
+    {
+      loglike += likelihood(&(experiments[i]), &theory, &astro, 0, 0);
+    }
+	//Now include likelihood for the neutrino fluxes
+	double sigma_flux = 0.61/5.69;
+	double sigma_day = sqrt(sigma_flux*sigma_flux + 0.33*0.33);
+	double sigma_night = sigma_day;
+	//-----------------------------NOT SURE WHICH VALUES TO USE---
+	//-----Roughly!!! - could be as small as 2%, not 5%
+	sigma_day = 1.0*sigma_flux;
+	sigma_day = 1.0;
+	sigma_night = 0.01;
+	//sigma_day = 0.001;
+	//sigma_night = sigma_day;
+	//sigma_night = sqrt(2)*0.61/5.69;
+	
+	//----Use 16% uncertainty
+	//sigma_day = 0.16;
+	
+	//-------------------------------FIX THIS NUMBER!!!
+	//double sigma_daynight = 0.01; //1% uncertainty
+	//std::cout << sigma_day << std::endl;
+	//std::cout << A_day << "\t" << A_day_true << "\t" << sigma_day << std::endl;
+	double L_day = (pow(A_day - A_day_true,2.0))/(2.0*sigma_day*sigma_day);
+	double L_night = (pow(A_night - A_night_true,2.0))/(2.0*sigma_night*sigma_night);
+	loglike += L_day;
+	if (A_day < 0) loglike += 1e30;
+	//loglike += L_night;
+	//theory.sigma_SI = 1e-60;
+	//theory.sigma_SD = 1e-60;
+	
+	//double L0 = 0;
+	//Be careful, I'm doing something a little funny here!
+    //for (int i = 0; i < N_expt; i++)
+    //{
+    //  L0 += likelihood(&(experiments[i]), &theory, &astro, 0, 0);
+    //}
+
+    //return 2*(L0-loglike);
+	return loglike;
+	
 }
 
 
@@ -529,8 +704,9 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 	     {
 		No_bin = expt->binned_data[i];
 	     }
-
-	     PL += (1.0/expt->N_Ebins)*PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
+         //Need to decide whether to do reweighting of the likelihood
+	     //PL += (1.0/expt->N_Ebins)*PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
+		 PL += PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
 	}
@@ -541,8 +717,9 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 	    //Calculate expected numbers of events
 	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 	    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
+        double Ne_nu = (expt->m_det)*(expt->exposure)*N_expected(&NeutrinoRate, parameters);
 
-	    double Ne_tot = Ne+Ne_BG;
+	    double Ne_tot = Ne+Ne_BG+Ne_nu;
 
 	    //Calculate signal/BG fractions
 	    double f_S = Ne/Ne_tot;
@@ -564,6 +741,8 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 		  setCurrentRate(&DMRate);
 		  eventLike = (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
 		  setCurrentRate(&BGRate);
+		  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
+		  setCurrentRate(&NeutrinoRate);
 		  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
 		  PL -= log(eventLike);
 	      }

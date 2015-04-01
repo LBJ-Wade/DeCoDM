@@ -14,7 +14,7 @@
 #include "EventRates.h"
 #include "Astrophysics_Class.h"
 #include "Particlephysics_Class.h"
-
+#include "Neutrinos.h"
 #include "Distributions.h"
 
 #include "gsl/gsl_rng.h"
@@ -37,8 +37,13 @@ void printEvents(std::vector<Event> data, std::string filename);
 double generateBGEvents(Detector* expt);
 void generateBGEvents_Asimov(Detector* expt);
 
+double generateNeutrinoEvents(Detector* expt);
+void generateNeutrinoEvents_Asimov(Detector* expt);
+
 void calcRotationMatrix(double* rot_matrix, double* v_lag);
 void rotateEvent(double* theta, double* phi, double* rot_matrix);
+
+
 
 //--------Main - Event Generator---------
 int main(int argc, char *argv[])
@@ -66,8 +71,9 @@ int main(int argc, char *argv[])
 
     gsl_rng_set(r,(unsigned)time(NULL));
 
-  //Load global parameters
-  load_params("params.ini");
+	//Load global parameters
+	load_params("params.ini");
+  
 
   std::vector<Detector> experiments;
 
@@ -116,14 +122,18 @@ int main(int argc, char *argv[])
 }
 
 
+
+
 //--------Function Definitions-----------
 
 void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD)
 {
+	//std::cout << "This code can be rewritten for generic rates (i.e. a 'generate' dataset code and then you just set which eventrate you want to use...) - 07/11/2014" << std::endl;
+	
   //Generate events and store as a vector in data
-
   double Ne = 0;
   double Ne_BG = 0;
+  double Ne_nu = 0;
 
   //Initialise and load in astrophysics
 
@@ -157,6 +167,9 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
     double rot_matrix[9];
     //calcRotationMatrix(rot_matrix,astro.v_lag);
 
+    //Calculate exposure in seconds (from days)
+    double exp_s = 60.0*60.0*24.0*expt->exposure;
+    
     for (int N = 0; N < No; )
     {
       double E = gsl_ran_flat(r,expt->E_min,expt->E_max);
@@ -164,6 +177,10 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
       double phi = gsl_ran_flat(r,0,2*PI);
 
       double p_max = convolvedRate(expt->E_min,&parameters);
+      
+      //Need to be careful about what I define as 'zero' time
+      //double time = gsl_ran_flat(r,0,expt->exposure);
+    
       //double p_max = convolvedRate(15.0*reduced_m_GeV(expt->m_n[0], m_x)/(expt->m_n[0]*931.5e-3),&parameters);
       //if (p_max1 > p_max) p_max = p_max1;
       double p = convolvedRate(E,&parameters);
@@ -191,11 +208,16 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
    //Display signal event numbers
     std::cout << "Signal:\t\t # expected = " << Ne << "; # observed = " << expt->No() << std::endl;
 
+	//Load neutrino flux table
+	LoadFluxTable();
 
     //Add BG events
     int No_BG = expt->No();
     Ne_BG = generateBGEvents(expt);
-    No_BG = expt->No() - No_BG;
+	No_BG = expt->No() - No_BG;
+	int No_nu = expt->No();
+	Ne_nu = generateNeutrinoEvents(expt);
+    No_nu = expt->No() - No_nu;
 
 
 
@@ -210,16 +232,24 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 	  expt->asimov_data[i] += Ne_bin;
 	}
 	generateBGEvents_Asimov(expt);
+	generateNeutrinoEvents_Asimov(expt);
     }
+	
+	//Clear neutrino flux table from memory
+	ClearFluxTable();
 
     //Display BG event numbers
     std::cout << "Background:\t # expected = " << Ne_BG << "; # observed = " << No_BG << std::endl;
 
+    //Display Neutrino event numbers
+	std::cout << "CNS:\t # expected = " << Ne_nu << "; # observed = " << No_nu << std::endl;
+
     //Display total event numbers
-    std::cout << "Total:\t\t # expected = " << Ne_BG+Ne << "; # observed = " << expt->No() << std::endl;
+    std::cout << "Total:\t\t # expected = " << Ne_nu+Ne_BG+Ne << "; # observed = " << expt->No() << std::endl;
 }
 
 
+//---------Generate BG events----------------------------------------------
 double generateBGEvents(Detector* expt)
 {
 
@@ -272,6 +302,65 @@ void generateBGEvents_Asimov(Detector* expt)
       expt->asimov_data[i] += Ne;
     }
 }
+
+//----------------------------------------------------------------------------------
+//------------Generate neutrino background events-----------------------------------
+//NB: I can potentially make this quite generic...----------------------------------
+double generateNeutrinoEvents(Detector* expt)
+{
+	
+  ParamSet parameters(expt,NULL, NULL);
+  double Ne_nu = expt->m_det*expt->exposure*(N_expected(&NeutrinoRate, parameters));
+
+  //int No_nu = gsl_ran_poisson(r,Ne_nu);
+  std::cout << "Currently setting No_nu = 1" << std::endl;
+  int No_nu = 1;
+  
+  double E, phi, y, theta;
+  double p;
+
+  setCurrentRate(&NeutrinoRate);
+  //Just so happens that the rate is constantly decreasing, so we can actually use this, reasonably
+  double p_max = 1.0*convolvedRate(expt->E_min,&parameters);
+
+  for (int N = 0; N < No_nu;)
+  {
+     //Generate a candidate event
+     E = gsl_ran_flat(r,expt->E_min,expt->E_max);
+     p = convolvedRate(E,&parameters);
+
+     //Test to see if event should be added
+      if (gsl_rng_uniform(r) < p/p_max)
+      {
+		//Generate isotropic angular distribution
+		phi = gsl_ran_flat(r,0,2*PI);
+		y = gsl_ran_flat(r,-1,1);
+		theta = acos(y);
+
+		//Add event
+		expt->data.push_back(Event(E,theta,phi));
+		N++;
+      }
+   }
+   
+   //Return expected number of neutrino events (if needed)
+   return Ne_nu;
+}
+
+void generateNeutrinoEvents_Asimov(Detector* expt)
+{
+  ParamSet parameters(expt,NULL, NULL);
+  setCurrentRate(&NeutrinoRate);
+
+
+    for (int i = 0; i < expt->N_Ebins; i++)
+    {
+      //Calculate number of expected and observed events
+      double Ne = expt->m_det*expt->exposure*(N_expected(&NeutrinoRate, parameters, expt->bin_edges[i], expt->bin_edges[i+1]));
+      expt->asimov_data[i] += Ne;
+    }
+}
+
 
 //------------Geometric operations to get all the angles in an x,y,z basis----------
 

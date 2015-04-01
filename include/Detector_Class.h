@@ -13,6 +13,9 @@ class Detector
     std::vector<double> frac_n; //Nuclear mass fraction of each element/isotope
     std::vector<double> m_n; //Nuclear mass in amu of each element/isotope
 
+    std::vector<double> N_p; //Number of protons
+    std::vector<double> N_n; //Number of neutrons
+    
     //Spin parameters - NB: possibly introduce a nuclei class (could keep separate 'nuclear' data files and load them up when needed...)
     std::vector<double> J;
     std::vector<double> Sp;
@@ -26,6 +29,7 @@ class Detector
     double exposure; //Effective exposure (t_exp x eff)
     double E_min;
     double E_max;
+    double start_time; //Start time in days!
 
     //Background event levels (in events /keV/kg/day
     double BG_level;
@@ -35,7 +39,9 @@ class Detector
 
     //Bin width and number of bins for binned analysis
     double bin_width;
+    double tbin_width;
     int N_Ebins;
+    int N_tbins;
 
     //Energy resultion (keV)
     double dE;
@@ -43,8 +49,12 @@ class Detector
 
     std::vector<Event> data; //List of events in detector
     std::vector<double> bin_edges; //List of energy bin edges
+    std::vector<double> tbin_edges; //List of time bin edges
     std::vector<int> binned_data; //List of binned data
-    std::vector<double> asimov_data; //List of asimov data in each bin
+    std::vector<double> asimov_data; //List of asimov data in each energy/time bin
+    //std::vector<double> timed_asimov_data; //List of asimov data in each time/energy bin
+	double A_nu;
+	std::vector<double> neutrino_data; //List of neutrino events in each bins
     double No(){return data.size();}
 
 

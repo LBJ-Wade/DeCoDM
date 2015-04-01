@@ -31,6 +31,18 @@ Astrophysics::Astrophysics()
 
 }
 
+//-------------------------------------------------
+double Astrophysics::modulated_rate(double t)
+{
+    //This method calculates the rate correction factor mod_correction[]
+    //associated with the time of each 'super'bin.
+    
+    
+    
+}
+
+
+//-------------------------------------------------
 double Astrophysics::load_params()
 {
   //Open file for reading in distribution parameters
@@ -41,6 +53,12 @@ double Astrophysics::load_params()
     rho_x = read_param_double(&file, "rho_x");
     v_esc = read_param_double(&file, "v_esc");
 
+      
+    //Load in modulation parameters
+    //mod_amplitude = read_param_double(&file, "mod_amplitude");
+    //mod_phase = read_param_double(&file, "mod_phase");
+    //mod_period = read_param_double(&file, "mod_period");
+      
     dist_type = read_param_string(&file, "dist_type");
     //std::cout << "Using " << dist_type << " type distribution..." << std::endl;
 

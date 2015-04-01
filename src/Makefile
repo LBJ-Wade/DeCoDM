@@ -1,7 +1,9 @@
 
 #Need to install GSL
 
-#Need to install fftw3
+#Need to install fftw3 - only necessary for Radon transform codes
+
+#Really should add in some compiler options to compile with or without Radon/DarkSUSY
 
 #Need to install lapack and lablas for GSL??
 #Check to see if I actually need lapack and lablas - doesn't look like I need GSL
@@ -15,8 +17,12 @@ F_FLAGS = -O3
 C = gcc
 C_FLAGS = -O3 -w
 
-CC = g++
-CC_FLAGS = -O3 -Wall -ansi
+CC = clang++
+CC_FLAGS = -O3 -Wall -arch x86_64 -v
+
+#Use fftw3
+USE_RADON = FALSE
+USE_ICECUBE = FALSE
 
 #-I../cosmomc/source
 
@@ -27,25 +33,47 @@ TARGET_TEST = ../test
 TARGET_GENERATE = ..
 TARGET_RADON = ..
 
-LIB_GSL = -lm -lstdc++ -lgsl -lgslcblas
-PATH_LIB_GSL = /home/bkavanag/gsl-1.9/lib
-INC_GSL = /home/bkavanag/gsl-1.9/include
+LIB_GSL = -lm -stdlib=libstdc++ -lgsl -lgslcblas
+PATH_LIB_GSL = /opt/local/lib
+INC_GSL = /opt/local/include
 
 INC_HEADERS = ../include
 
-LIB_FFTW = -lfftw3
-PATH_LIB_FFTW = /home/bkavanag/fftw/lib
-INC_FFTW = /home/bkavanag/fftw/include
+
+ifeq ($(USE_RADON),TRUE)
+	   LIB_FFTW = -lfftw3
+	   PATH_LIB_FFTW = /home/bkavanag/fftw/lib
+	   INC_FFTW = /home/bkavanag/fftw/include
+else
+	   LIB_FFTW =
+	   PATH_LIB_FFTW = 
+	   INC_FFTW =
+endif
+
 
 #LIB_LAPACK = -llapack -lblas
 PATH_LIB_LAPACK = /home/bkavanag/lapack-3.2
 
-LIB_DS = -ldarksusy -lgfortran -lHB -lFH -lisajet
-PATH_LIB_DS = /home/bkavanag/darksusy-5.1.1/lib
+ifeq ($(USE_RADON),TRUE)
+	   LIB_DS = -ldarksusy -lgfortran -lHB -lFH -lisajet
+	   PATH_LIB_DS = /home/bkavanag/darksusy-5.1.1/lib
+else
+       LIB_DS = 
+	   PATH_LIB_DS =
+endif
 
-LIBS =  -L$(PATH_LIB_GSL) -L$(PATH_LIB_FFTW) -L$(PATH_LIB_LAPACK)
-LD_FLAGS = $(LIB_GSL) $(LIB_FFTW) $(LIB_LAPACK)
-INCLUDE = -I$(INC_GSL) -I$(INC_HEADERS) -I$(INC_FFTW)
+LIBS =  -L$(PATH_LIB_GSL)  -L$(PATH_LIB_LAPACK)
+ifeq ($(USE_RADON),TRUE)
+       LIBS += -L$(PATH_LIB_FFTW)
+endif
+LD_FLAGS = $(LIB_GSL) $(LIB_LAPACK)
+ifeq ($(USE_RADON),TRUE)
+       LD_FLAGS += -L$(LIB_FFTW)
+endif
+INCLUDE = -I$(INC_GSL) -I$(INC_HEADERS) 
+ifeq ($(USE_RADON),TRUE)
+       INCLUDE += -I$(INC_FFTW)
+endif
 
 
 
@@ -54,19 +82,24 @@ EXEC = run
 SOURCES = $(*.cc)
 OBJECTS = $(SOURCES:.cc=.o)
 
-OBJ_FILES =  DMUtils.o Detector_Class.o Event_Class.o Parametrisations.o EventRates.o MatrixUtils.o Distributions.o Astrophysics_Class.o RadonTransform.o
+OBJ_FILES =  DMUtils.o Detector_Class.o Event_Class.o Parametrisations.o EventRates.o MatrixUtils.o Distributions.o Astrophysics_Class.o Neutrinos.o
+ifeq ($(USE_RADON),TRUE)
+        OBJ_FILES += RadonTransform.o
+endif
 
 HEADER_FILES = $(OBJ_FILES:.o=.h)
 #Main Target
 
-all: GenerateEvents GenerateEvents_IC CalcLikelihood CalcRadon ChainAnalysis ChainAnalysis2 Lib
+all: GenerateEvents CalcLikelihood Lib
+
+#CalcRadon GenerateEvents_IC ChainAnalysis ChainAnalysis2
 
 #NB: Check ordering of library flags...
 
 Lib: libdecodm.a
 
 polyf.o: polyf.c
-	$(C) $(C_FLAGS) -c $^ $(LD_FLAGS)
+	$(C) $(C_FLAGS) $(INCLUDE) -c $^ $(LD_FLAGS)
 
 %.o: %.cc
 	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -c $^ $(LD_FLAGS)
@@ -101,6 +134,9 @@ CalcRadon: CalcRadon.o $(OBJ_FILES)
 
 CalcLikelihood: CalcLikelihood.cc $(OBJ_FILES)
 	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS)  -c $< $(LD_FLAGS)
+
+CalcNeutrinos: CalculateNeutrinos.cc $(OBJ_FILES)
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS)  -o $@ $^ $(LD_FLAGS)
 
 libdecodm.a: CalcLikelihood $(OBJ_FILES)
 	ar r ../$@ CalcLikelihood.o $(OBJ_FILES)

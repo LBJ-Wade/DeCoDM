@@ -44,9 +44,20 @@ class Astrophysics
         //General parameters
         double v_esc;
 
+        //Modulation parameters
+        double mod_amplitude;
+        double mod_phase;
+        double mod_period;
+    
+        double* mod_correction;
+    
         //-------Function prototypes----------
         double load_params();
-
+    
+        double modulated_rate(double t);
+    
+        double calc_modulation(double t_bin_width);
+    
         double calc_bin_edges(double start, double end, int N_bins, double* edges);
 
         double (*velocityIntegral) (double,Astrophysics*);

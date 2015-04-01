@@ -5,6 +5,7 @@
 #include "ParamSet_Class.h"
 #include "DMUtils.h"
 #include "EventRates.h"
+#include "Neutrinos.h"
 
 #include "gsl/gsl_sf_legendre.h"
 #include "gsl/gsl_integration.h"
@@ -30,9 +31,10 @@ int USE_FLOAT_BG;
 int USE_VARY_FF;
 int USE_ASIMOV_DATA;
 
+int LOUD_MOUTH;
+
 double (*currentRate) (double, void*);
 double currentE;
-
 
 //--------File-scope variables
 double E_a;
@@ -328,9 +330,12 @@ double PoissonLike(Detector* expt, ParamSet parameters, double signal_rate (doub
 
   //Calculate expected numbers of events
   double Ne = (expt->m_det)*(expt->exposure)*N_expected(signal_rate, parameters, E1, E2);
-  double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate,parameters, E1, E2);
+  double Ne_BG = (expt->A_nu)*(expt->m_det)*(expt->exposure)*N_expected(&BGRate,parameters, E1, E2);
+  int ibin = round(expt->N_Ebins*(E1 - expt->E_min)/(expt->E_max - expt->E_min));
+  double Ne_nu = (expt->A_nu)*(expt->neutrino_data)[ibin];
 
   double Ne_tot = Ne+Ne_BG;
+  //Ne_tot += Ne_nu;
 
   //if (Ne_tot < 1e-12) Ne_tot = 1e-12;
 
@@ -548,17 +553,20 @@ int load_params(std::string filename)
 
     file.close();
 
-    //Display parameter values
-    std::cout << "Using parameters:" << std::endl;
-    std::cout << "\tN_expt:\t" << N_expt << std::endl;
-    std::cout << "\tvmode:\t" << vmode << std::endl;
-    std::cout << "\tdir:\t" << DIR << std::endl;
-    std::cout << "\tUSE_SI:\t" << USE_SI << std::endl;
-    std::cout << "\tUSE_SD:\t" << USE_SD << std::endl;
-    std::cout << "\tUSE_FLOAT_BG:\t" << USE_FLOAT_BG << std::endl;
-    std::cout << "\tUSE_ASIMOV_DATA:\t" << USE_ASIMOV_DATA << std::endl;
-    std::cout << "\tUSE_VARY_FF:\t" << USE_VARY_FF << std::endl;
-    std::cout <<std::endl;
+    if (LOUD_MOUTH)
+	{
+	    //Display parameter values
+	    std::cout << "Using parameters:" << std::endl;
+	    std::cout << "\tN_expt:\t" << N_expt << std::endl;
+	    std::cout << "\tvmode:\t" << vmode << std::endl;
+	    std::cout << "\tdir:\t" << DIR << std::endl;
+	    std::cout << "\tUSE_SI:\t" << USE_SI << std::endl;
+	    std::cout << "\tUSE_SD:\t" << USE_SD << std::endl;
+	    std::cout << "\tUSE_FLOAT_BG:\t" << USE_FLOAT_BG << std::endl;
+	    std::cout << "\tUSE_ASIMOV_DATA:\t" << USE_ASIMOV_DATA << std::endl;
+	    std::cout << "\tUSE_VARY_FF:\t" << USE_VARY_FF << std::endl;
+	    std::cout <<std::endl;
+    }
   }
   else std::cout << "Unable to open parameter file:\t'" << filename << "'" << std::endl;
 

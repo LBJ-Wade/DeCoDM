@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
      chainID = argv[1];
      prefix = argv[2];
 
-     chainfile = "/home/bkavanag/chains/JOB_"+chainID;
+     chainfile = "/Volumes/BradHD/Projects/DD+IC/chains/JOB_"+chainID;
      chainfile += "/" + prefix + ".txt";
 
      //Open the chainfile

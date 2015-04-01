@@ -67,6 +67,8 @@ extern int USE_FLOAT_BG; //Use a floating background level in each experiment
 extern int USE_VARY_FF; //Use varying SD Form Factor in each experiment
 extern int USE_ASIMOV_DATA; //Analyse using asimov data
 
+extern int LOUD_MOUTH; //Determine whether to bang on about what the code is doing
+
 //Define globally stored limits for Ne integration
 extern double E_a;
 extern double E_b;
