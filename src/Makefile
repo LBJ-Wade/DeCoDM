@@ -15,7 +15,7 @@ FC = gfortran
 F_FLAGS = -O3
 
 C = gcc
-C_FLAGS = -O3 -w
+C_FLAGS = -O3 -w 
 
 CC = clang++
 CC_FLAGS = -O3 -Wall -arch x86_64 -v
@@ -82,7 +82,8 @@ EXEC = run
 SOURCES = $(*.cc)
 OBJECTS = $(SOURCES:.cc=.o)
 
-OBJ_FILES =  DMUtils.o Detector_Class.o Event_Class.o Parametrisations.o EventRates.o MatrixUtils.o Distributions.o Astrophysics_Class.o Neutrinos.o
+OBJ_FILES =  DMUtils.o Detector_Class.o Event_Class.o Particlephysics_Class.o Parametrisations.o EventRates.o MatrixUtils.o Distributions.o Astrophysics_Class.o Neutrinos.o GenerateEvents.o
+
 ifeq ($(USE_RADON),TRUE)
         OBJ_FILES += RadonTransform.o
 endif
@@ -116,9 +117,10 @@ ChainAnalysis2: ChainAnalysis2.c CalcLikelihood.cc $(OBJ_FILES) polyf.o
 	cp ChainAnalysis2 $(TARGET_GENERATE)
 
 GenerateEvents: $(OBJ_FILES)
-	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o $@ $^ GenerateEvents.cc $(LD_FLAGS)
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o GenerateEvents $^ GenerateEvents_main.cc $(LD_FLAGS)
 	cp GenerateEvents $(TARGET_GENERATE)
 	cp GenerateEvents $(TARGET_TEST)
+	cp GenerateEvents /Users/bradkav/Projects/DirectionalDetailed/DirFit
 	rm GenerateEvents
 
 GenerateEvents_IC: $(OBJ_FILES)

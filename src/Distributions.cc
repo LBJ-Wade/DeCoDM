@@ -29,25 +29,58 @@ double velInt_maxwell(double v, Astrophysics* astro)
           double v_rms = astro->v_rms[i];
           double v_esc = astro->v_esc;
           double v_lag = astro->v_lag[i];
-
+		  
           double vel_integral = 0;
-          double N = 1.0/(pow(2*PI,1.5)*pow(v_rms,3)*gsl_sf_erf(v_esc/(sqrt(2)*v_rms)) - 4*PI*v_rms*v_rms*exp(-0.5*pow(v_esc/v_rms,2)));
-	  if (v > (v_esc + v_lag))
+          double N = 1.0/(gsl_sf_erf(v_esc/(sqrt(2)*v_rms)) - sqrt(2.0/PI)*(v_esc/v_rms)*exp(-0.5*pow(v_esc/v_rms,2)));
+	  /*if (v > (v_esc + v_lag))
 	  {
 	   return 0;
 	  }
 	  else if (v < (v_esc - v_lag))
 	  {
-	    vel_integral = sqrt(2)*pow(PI,1.5)*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v + v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
-	    vel_integral -= 4*PI*v_rms*v_rms*exp(-0.5*pow(v_esc/v_rms,2));
+	    vel_integral = (0.5/(v_lag))*(gsl_sf_erf((v + v_lag)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+	    vel_integral -= sqrt(2.0/PI)*(1.0/v_rms)*exp(-0.5*pow(v_esc/v_rms,2));
 	  }
 	  else
 	  {
-	    vel_integral = sqrt(2)*pow(PI,1.5)*(pow(v_rms,3)/v_lag)*(gsl_sf_erf((v_esc)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
-	    vel_integral -= 2*PI*v_rms*v_rms*((v_esc+v_lag - v)/(v_lag))*exp(-0.5*pow(v_esc/v_rms,2));
-	  }
+	    vel_integral = (0.5/(v_lag))*(gsl_sf_erf((v_esc)/(sqrt(2)*v_rms)) - gsl_sf_erf((v -v_lag)/(sqrt(2)*v_rms)));
+	    vel_integral -= 0.5*sqrt(2.0/PI)*((v_esc+v_lag - v)/(v_lag*v_rms))*exp(-0.5*pow(v_esc/v_rms,2));
+	  }*/
+		  
+		  double aplus = std::min((v + v_lag), v_esc)/(sqrt(2)*v_rms);
+		  double aminus = std::min((v - v_lag), v_esc)/(sqrt(2)*v_rms);
+
+		  vel_integral = (0.5/v_lag)*(gsl_sf_erf(aplus) - gsl_sf_erf(aminus));
+		  vel_integral -= (1.0/(sqrt(PI)*v_lag))*(aplus - aminus)*exp(-0.5*pow(v_esc/v_rms, 2));
 
           vel_integral_total += 2*PI*N*vel_integral*astro->fraction[i];
+  }
+  return vel_integral_total;
+}
+
+double velInt_maxwell_modified(double v, Astrophysics* astro)
+{
+
+
+  double vel_integral_total = 0;
+
+  for (int i = 0; i < astro->N_dist; i++)
+  {
+          double v_rms = astro->v_rms[i];
+          double v_esc = astro->v_esc;
+          double v_lag = astro->v_lag[i];
+
+          double vel_integral = 0;
+          
+		  double T_plus = gsl_sf_erf((v + v_lag)/(sqrt(2)*v_rms));
+		  double T_minus = gsl_sf_erf((v - v_lag)/(sqrt(2)*v_rms));
+		  
+		  double K_plus = exp(-0.5*pow((v+v_lag)/v_rms,2));
+		  double K_minus = exp(-0.5*pow((v-v_lag)/v_rms,2));
+
+          vel_integral = (sqrt(PI/2.0)/v_lag)*(sqrt(2.0*PI)*(v_rms*v_rms - v*v + v_lag*v_lag)*(T_plus - T_minus) + 2.0*v_rms*(v_lag - v)*K_plus + 2.0*v_rms*(v+v_lag)*K_minus);
+
+          vel_integral_total += vel_integral*astro->fraction[i]/(3e5*3e5);
   }
   return vel_integral_total;
 }
@@ -213,6 +246,39 @@ double velInt_backwardPoly(double v, Astrophysics* astro )
   double vel_integral = multipoleRadon(v, 0, &forwardIntegrandPoly, astro->vel_params_backward, astro->N_vp);
   vel_integral += multipoleRadon(v, 0, &backwardIntegrandPoly, astro->vel_params_forward, astro->N_vp);
   return vel_integral;
+}
+
+double velInt_polytotal(double v, Astrophysics* astro)
+{
+    if (v > v_max) return 0;
+
+    //Declare gsl workspace (1000 subintervals)
+    gsl_integration_workspace * workspace
+           = gsl_integration_workspace_alloc (5000);
+
+    //Declare gsl function to be integrated
+    gsl_function F;
+    F.function = &polyfintegrand_total;
+
+    F.params = astro;
+
+    double result, error;
+
+    int status = gsl_integration_qag(&F,v,v_max, 0, 1e-6, 5000,6,
+                               workspace, &result, &error);
+
+    if (status ==  GSL_EROUND)
+    {
+    //result = 0;
+    std::cout << "GSL rounding error!" << std::endl;
+    std::cout << result << std::endl;
+    }
+
+    //Free workspace
+    gsl_integration_workspace_free (workspace);
+
+    //Return result of integration
+    return 2.0*PI*result;
 }
 
 double multipoleRadon(double v_q, int l, double integrand (double,void*), double* params, int N)
@@ -495,10 +561,74 @@ double polyf(double v, void* params)
 
   for (int i = 0; i < astro->N_vp; i++)
   {
-   logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*astro->vel_params[i];
+	  //Change to Chebyshev Polynomials!
+   logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params[i];
+   //logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*astro->vel_params[i];
   }
   return v*v*exp(logf);
 }
+
+
+//Need to fix this - different normalisation!!!
+double polyf_ang(double v, Astrophysics* astro, int k)
+{
+    double alpha = (v/v_max);
+
+    double logf = 0;
+
+    for (int i = 0; i < astro->N_vp; i++)
+    {
+  	  //Change to Chebyshev Polynomials!
+     logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
+     //logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*astro->vel_params[i];
+    }
+    return exp(logf);	
+}
+
+double polyf_total(double v, void* params)
+{
+    Astrophysics* astro = ((Astrophysics*)params);
+    double alpha = (v/v_max);
+
+    double logf = 0;
+	double f = 0;
+	
+	for (int k = 0; k < N_ang; k++)
+	{
+		logf = 0;
+		for (int i = 0; i < astro->N_vp; i++)
+		{
+		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
+		}
+		f += exp(logf);
+	}
+    return v*v*f;	
+	
+	
+}
+
+double polyfintegrand_total(double v, void* params)
+{
+    Astrophysics* astro = ((Astrophysics*)params);
+    double alpha = (v/v_max);
+
+    double logf = 0;
+	double f = 0;
+	
+	for (int k = 0; k < N_ang; k++)
+	{
+		logf = 0;
+		for (int i = 0; i < astro->N_vp; i++)
+		{
+		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
+		}
+		f += exp(logf);
+	}
+    return v*f;	
+	
+	
+}
+
 
 /*
 double polyf_DIR(double v, void* params)

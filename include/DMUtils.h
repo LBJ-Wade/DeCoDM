@@ -59,15 +59,24 @@ extern std::string expt_folder;
 extern std::string events_folder;
 extern int N_expt; //Number of experiments
 extern int vmode;   //Speed parametrization mode (see guide...)
+extern int N_ang;  //Number of angular bins to use for directional det.
+extern int N_terms; //Number of terms in velocity parametrisation (per angular bin)
+
+extern int j_bin; //Current bin (global)
+
 extern int USE_SD; //Use spin-dependent interactions
 extern int USE_SI; //Use spin-dependent interactions
-extern int DIR;	   //Use directional information on events
+//extern int DIR;	   //Use directional information on events
 //extern int N_terms; //How many terms are used in the parametrisation
 extern int USE_FLOAT_BG; //Use a floating background level in each experiment
 extern int USE_VARY_FF; //Use varying SD Form Factor in each experiment
 extern int USE_ASIMOV_DATA; //Analyse using asimov data
 
+extern int INCLUDE_NU; //Determine whether to include coherent neutrino scattering
+
 extern int LOUD_MOUTH; //Determine whether to bang on about what the code is doing
+
+extern std::vector<Detector> experiments; //Experiments under consideration...
 
 //Define globally stored limits for Ne integration
 extern double E_a;

@@ -6,6 +6,7 @@
 #include "DMUtils.h"
 #include "EventRates.h"
 #include "Neutrinos.h"
+#include "Particlephysics_Class.h"
 
 #include "gsl/gsl_sf_legendre.h"
 #include "gsl/gsl_integration.h"
@@ -21,17 +22,28 @@
 std::string expt_folder;
 std::string events_folder;
 int N_expt;
+
+//Velocity parametrisation
 int vmode;
+int N_ang;
+int N_terms;
+
+//Current angular bin
+int j_bin;
+
 int USE_SD;
 int USE_SI;
-int DIR;
 //int N_terms;
 
 int USE_FLOAT_BG;
 int USE_VARY_FF;
 int USE_ASIMOV_DATA;
 
+int INCLUDE_NU;
+
 int LOUD_MOUTH;
+
+std::vector<Detector> experiments;
 
 double (*currentRate) (double, void*);
 double currentE;
@@ -107,7 +119,6 @@ double N_expected(double rate (double,void*), ParamSet parameters)
 
   //Declare gsl function to be integrated
   gsl_function F;
-
 
   F.params = &parameters;
 
@@ -227,8 +238,8 @@ double rate_prefactor(double m_n, double m_x, double sigma, double rho)
   double mu = reduced_m(1,m_x);
 
   //Calculate Prefactor (NB: V0 in km/s)
-  double p = 1.274e-12*sigma*rho/(4.0*PI*m_x*mu*mu);
-
+  //double p = 1.274e-12*sigma*rho/(4.0*PI*m_x*mu*mu);
+  double p = 1.38413e-12*sigma*rho/(4.0*PI*m_x*mu*mu);
   //Rescale units
   //p *= 1.474e-17*86400;
 
@@ -268,7 +279,7 @@ double reduced_m(double m_n, double m_x)
   //Convert nuclear mass into GeV
   m_n *= (931.5e-3);
 
-  //Calculate reduced mass
+  //Calculate reduced mass in kg
   double mu = 1.78e-27*(m_n*m_x)/(m_n+m_x);
 
   //Convert reduced mass to kg
@@ -541,8 +552,8 @@ int load_params(std::string filename)
     expt_folder = read_param_string(&file, "expt_folder");
     events_folder = read_param_string(&file, "events_folder");
 
-    vmode = read_param_int(&file, "vmode");
-    DIR = read_param_int(&file, "DIR");
+    //vmode = read_param_int(&file, "vmode");
+    //DIR = read_param_int(&file, "DIR");
 
     USE_SD = read_param_int(&file, "USE_SD");
     USE_SI = read_param_int(&file, "USE_SI");
@@ -550,6 +561,10 @@ int load_params(std::string filename)
     USE_FLOAT_BG = read_param_int(&file, "USE_FLOAT_BG");
     USE_ASIMOV_DATA = read_param_int(&file, "USE_ASIMOV_DATA");
     USE_VARY_FF = read_param_int(&file, "USE_VARY_FF");
+	
+    LOUD_MOUTH = read_param_int(&file, "LOUD_MOUTH");
+	
+	INCLUDE_NU = read_param_int(&file, "INCLUDE_NU");
 
     file.close();
 
@@ -559,12 +574,13 @@ int load_params(std::string filename)
 	    std::cout << "Using parameters:" << std::endl;
 	    std::cout << "\tN_expt:\t" << N_expt << std::endl;
 	    std::cout << "\tvmode:\t" << vmode << std::endl;
-	    std::cout << "\tdir:\t" << DIR << std::endl;
+	    //std::cout << "\tdir:\t" << DIR << std::endl;
 	    std::cout << "\tUSE_SI:\t" << USE_SI << std::endl;
 	    std::cout << "\tUSE_SD:\t" << USE_SD << std::endl;
 	    std::cout << "\tUSE_FLOAT_BG:\t" << USE_FLOAT_BG << std::endl;
 	    std::cout << "\tUSE_ASIMOV_DATA:\t" << USE_ASIMOV_DATA << std::endl;
 	    std::cout << "\tUSE_VARY_FF:\t" << USE_VARY_FF << std::endl;
+		std::cout << "\tINCLUDE_NU:\t" << INCLUDE_NU << std::endl;
 	    std::cout <<std::endl;
     }
   }

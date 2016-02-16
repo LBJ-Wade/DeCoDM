@@ -51,12 +51,136 @@ double diffRate (double v, double theta, double phi, ParamSet params)
    return rate_prefactor(m_n, m_x, sigma, 0.3)*int_factor*maxwellRadon(v,theta,phi,v_lagx,v_lagy,v_lagz,sigma_v);
 }
 */
-double maxwellRadon(double v, double theta, double phi, double vlagx, double vlagy, double vlagz, double sigma)
+double maxwellRadon(double v, double theta, double phi, Astrophysics* astro)
+{
+	double total = 0;
+    for (int i = 0; i < astro->N_dist; i++)
+    {
+            double v_rms = astro->v_rms[i];
+            double v_esc = astro->v_esc;
+            double v_lagx = astro->v_lag_x[i];
+			double v_lagy = astro->v_lag_y[i];
+			double v_lagz = astro->v_lag_z[i];
+	
+  		    double dotproduct = sin(theta)*(cos(phi)*v_lagx + sin(phi)*v_lagy) + cos(theta)*v_lagz;
+
+  		  	double N = 1.0/(gsl_sf_erf(v_esc/(sqrt(2)*v_rms)) - sqrt(2.0/PI)*(v_esc/v_rms)*exp(-0.5*pow(v_esc/v_rms,2)));
+
+ 		    total += astro->fraction[i]*N*(pow(2*PI*v_rms*v_rms,-1.0/2.0))*(exp(-0.5*pow((v-dotproduct)/v_rms,2)) - exp(-0.5*pow(v_esc/v_rms,2)));
+		}
+		return total;
+}
+
+double maxwellModifiedRadon(double v, double theta, double phi, double vlagx, double vlagy, double vlagz, double sigma)
 {
   double dotproduct = sin(theta)*(cos(phi)*vlagx + sin(phi)*vlagy) + cos(theta)*vlagz;
+  double vlagsq = vlagx*vlagx + vlagy*vlagy + vlagz*vlagz;
 
+ return (2.0*sigma*sigma + vlagsq - dotproduct*dotproduct)*(pow(2*PI*sigma*sigma,-1.0/2.0))*exp(-0.5*pow((v-dotproduct)/sigma,2))/(3e5*3e5);
+}
 
- return (pow(2*PI*sigma*sigma,-1.0/2.0))*exp(-0.5*pow((v-dotproduct)/sigma,2));
+double DMRateNR(double E, void* params)
+{
+	//Currently just calculates the separate contibutions F_ij^NN', with no overall scaling...
+    Detector* expt = ((ParamSet*)params)->exptParams;
+    Particlephysics* theory = ((ParamSet*)params)->theoryParams;
+    Astrophysics* astro = ((ParamSet*)params)->astroParams;
+
+    std::vector<double> m_n = expt->m_n;
+
+    //Note the factor of 0.5;
+
+	int op1 = theory->op1;
+	int op2 = theory->op2;
+	
+	int N1 = theory->N1;
+	int N2 = theory->N2;
+
+    double rate1 = 0;
+	double total_rate = 0;
+
+	double A = 0;
+	double B = 0;
+
+	 double conv = pow((1.98e-14*1.0/(theory->m_x+0.9315)),2)/(16.0*PI);
+	  
+	  int i_c = 0;
+	  if ((N1 == 0) and (N2 == 0)) i_c = 0;
+	  if ((N1 == 0) and (N2 == 1)) i_c = 1;
+	  if ((N1 == 1) and (N2 == 0)) i_c = 2;
+	  if ((N1 == 1) and (N2 == 1)) i_c = 3;
+
+    for (int i = 0; i < expt->N_isotopes; i++)
+    {
+      double int_factor = 0;
+      //Define conversion factor from amu-->keV
+      double amu = 931.5*1000;
+      //Convert recoil energy to momentum transfer q in keV
+      double  q = sqrt(2*m_n[i]*amu*E);
+      //Convert q into fm^-1
+      //q *= (1e-12/1.97e-7);
+
+      double v = v_min(E,m_n[i],theory->m_x);
+
+	  rate1 = 0;
+	  A = 0;
+	  B = 0;
+	  
+	  double Eta = astro->velocityIntegral(v, astro);
+	  double MEta = astro->modifiedVelocityIntegral(v, astro);
+	  
+	  if (op1 == op2)
+	  {
+		  switch (op1) 
+		  {
+			  case 1:
+			      rate1 = expt->F_M(E, i, i_c)*Eta;
+				  break;
+			  case 3:
+			  	  A = MEta*expt->F_Sigma1(E, i, i_c);
+			      B = 2.0*pow((q/amu),2.0)*Eta*expt->F_Phi2(E, i, i_c);
+			      rate1 = pow((q/amu),2.0)*(A+B)/8.0;
+				  break;
+			  case 4:
+			  	  //Use the correct values here...Check the normalisation/scaling...
+			      //rate1 = (1.0/16.0)*Eta*(expt->F_Sigma1(E, i, i_c) + expt->F_Sigma2(E, i, i_c));
+			      rate1 = (1.0/4.0)*(1.0/16.0)*Eta*expt->F_SD(E, i, i_c);
+				  break;
+			  case 5:
+			  	  A = MEta*expt->F_M(E, i, i_c);
+			      B = Eta*pow((q/amu),2.0)*expt->F_Delta(E, i, i_c);
+			      rate1 = pow((q/amu),2.0)*(A + B)/4.0;
+				  break;
+			  case 6:
+				  rate1 = pow((q/amu),4.0)*Eta*expt->F_Sigma2(E, i, i_c)/16.0;
+				  break;
+			  case 7:
+				  rate1 = MEta*expt->F_Sigma1(E, i, i_c)/8.0;
+				  break;
+			  case 8:
+				  A = MEta*expt->F_M(E, i, i_c);
+				  B = Eta*pow((q/amu),2.0)*expt->F_Delta(E, i, i_c);
+				  rate1 = (A + B)/4.0;
+				  break;
+			  case 9:
+				  rate1 = Eta*pow((q/amu),2.0)*expt->F_Sigma1(E, i, i_c)/16.0;
+				  break;
+			  case 10:
+				  rate1 = Eta*pow((q/amu),2.0)*expt->F_Sigma2(E, i, i_c)/4.0;
+				  break;
+			  case 11:
+				  rate1 = Eta*pow((q/amu),2.0)*expt->F_M(E, i, i_c)/4.0;
+				  break;
+		  }
+	  }
+	  else
+	  {
+		  std::cout << "No interference terms have been included yet!" << std::endl;
+	  }
+	  total_rate += expt->frac_n[i]*rate1*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*conv;
+	  
+    }
+	return total_rate;
 }
 
 double DMRate(double E, void* params)
@@ -68,7 +192,6 @@ double DMRate(double E, void* params)
     std::vector<double> m_n = expt->m_n;
 
     //Note the factor of 0.5;
-
     double rate = 0;
 
     for (int i = 0; i < expt->N_isotopes; i++)
@@ -76,16 +199,121 @@ double DMRate(double E, void* params)
       double int_factor = 0;
 
       //Currently only isoscalar SD scattering (i.e. 0 rather than 1 in the 'component' field)
-      if ((USE_SD)&&(pow(expt->J[i],2) > 1e-6))	int_factor += theory->sigma_SD*expt->SD_formfactor(E,i, 1)*expt->SD_enhancement(i);
-      if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
+      if ((USE_SD)&&(pow(expt->J[i],2) > 1e-6))	int_factor += theory->sigma_SD*(16.0/3.0)*(1.0/16.0)*(expt->F_Sigma1(E, i, 0)+expt->F_Sigma2(E, i, 0));
+	  if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
+	 
+      //Define conversion factor from amu-->keV
+      double amu = 931.5*1000;
+      //Convert recoil energy to momentum transfer q in keV
+      double  q = sqrt(2*m_n[i]*amu*E);
+      //Convert q into fm^-1
+      q *= (1e-12/1.97e-7);
+
 
       double v = v_min(E,m_n[i],theory->m_x);
-
-      rate += expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*int_factor*astro->velocityIntegral(v, astro);
-
+	  double R1 = expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*int_factor*astro->velocityIntegral(v, astro);
+	  //Add in the O7 operator - need to check/include interaction factor...
+	  /*
+	  double p5 = 0;
+	  double R5 = 0;
+	  if (theory->sigma_O5 > 1e-60)
+	  {
+	      p5 = theory->sigma_O5*(expt->F_M(E, i, 0)*astro->modifiedVelocityIntegral(v, astro) + pow(q/amu, 2.0)*expt->F_Delta(E,i,0)*astro->velocityIntegral(v, astro));
+	      R5 = (1.0/4.0)*expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*(pow(q/amu, 2.0))*p5;
+	  }
+	  
+	  double R2 = 0;
+	  if (theory->sigma_O7 > 1e-60)
+	  {
+	      R2 =  (1.0/8.0)*expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*theory->sigma_O7*expt->F_Sigma1(E, i, 0)*astro->modifiedVelocityIntegral(v, astro);
+	  }
+	  
+	  double p3 = 0;
+	  double R3 = 0;
+	  if (theory->sigma_O15 > 1e-60)
+	  {
+	      p3 = theory->sigma_O15*(expt->F_Sigma1(E, i, 0)*astro->modifiedVelocityIntegral(v, astro) + 2*pow(q/amu, 2.0)*expt->F_Phi2(E,i,0)*astro->velocityIntegral(v, astro));
+	      R3 = (1.0/32.0)*expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*(pow(q/amu, 4.0))*p3;
+      }
+	  
+	  rate += R1 + R2 + R3 + R5;
+	  */
+	  rate += R1;
     }
     return rate;
 }
+
+double DMRateDirectional(double E, double theta, double phi, void* params)
+{
+    Detector* expt = ((ParamSet*)params)->exptParams;
+    Particlephysics* theory = ((ParamSet*)params)->theoryParams;
+    Astrophysics* astro = ((ParamSet*)params)->astroParams;
+
+    std::vector<double> m_n = expt->m_n;
+
+    //Note the factor of 0.5;
+
+    //theory->PrintAll();
+
+    double rate = 0;
+
+    for (int i = 0; i < expt->N_isotopes; i++)
+    {
+      double int_factor = 0;
+
+	  //Do a list of nuclear response functions for all the operators...
+	  //Also do a list of proton correction factors for all operators...
+
+      //Currently only isoscalar SD scattering (i.e. 0 rather than 1 in the 'component' field)
+
+      if ((USE_SD)&&(pow(expt->J[i],2) > 1e-6))	int_factor += theory->sigma_SD*(16.0/3.0)*(1.0/16.0)*(expt->F_Sigma1(E, i, 0)+expt->F_Sigma2(E, i, 0));
+	  if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
+
+      //Define conversion factor from amu-->keV
+      double amu = 931.5*1000;
+      //Convert recoil energy to momentum transfer q in keV
+      double  q = sqrt(2*m_n[i]*amu*E);
+      //Convert q into fm^-1
+      q *= (1e-12/1.97e-7);
+
+      double v = v_min(E,m_n[i],theory->m_x);
+	  //std::cout << std::endl;
+	  double R1 = 0;
+	  for (int i = 0; i < astro->N_dist; i++)
+	  {
+		  R1 += astro->fraction[i]*maxwellRadon(v, theta, phi, astro);
+	  }
+      R1 *= expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*int_factor;
+	  //std::cout << R1 << std::endl;
+	  //Need to generalise to any velocity distribution...
+	  
+	  double p5 = 0;
+	  double R5 = 0;
+	  if (theory->sigma_O5 > 1e-60)
+	  {
+	      p5 = theory->sigma_O5*(expt->F_M(E, i, 0)*maxwellModifiedRadon(v, theta, phi, 0, 0, 220.0, 156.0) + pow(q/amu, 2.0)*expt->F_Delta(E,i,0)*maxwellRadon(v, theta, phi, astro));
+	      R5 = (1.0/4.0)*expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*(pow(q/amu, 2.0))*p5;
+	  }
+	  
+	  double R2 = 0;
+	  if (theory->sigma_O7 > 1e-60)
+	  {
+	      R2 = (1.0/8.0)*expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*theory->sigma_O7*expt->F_Sigma1(E, i, 0)*maxwellModifiedRadon(v, theta, phi, 0, 0, 220.0, 156.0);
+	  }
+	  //std::cout << R1 << "\t" << R2 << std::endl;
+	  
+	  double p3 = 0;
+	  double R3 = 0;
+	  if (theory->sigma_O15 > 1e-60)
+	  {
+	      p3 = theory->sigma_O15*(expt->F_Sigma1(E, i, 0)*maxwellModifiedRadon(v, theta, phi, 0, 0, 220.0, 156.0) + 2*pow(q/amu, 2.0)*expt->F_Phi2(E,i,0)*maxwellRadon(v, theta, phi, astro));
+	      R3 = (1.0/32.0)*expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*(pow(q/amu, 4.0))*p3;
+	  }
+	  rate += R1 + R2 + R3 + R5;
+    }
+    return rate;
+}
+
 //Need to work out how best to do this in GSL!! Nested integrals suck!
 /*
 double DMRate_timedep(double E, void* params)

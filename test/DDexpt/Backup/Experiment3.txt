@@ -28,15 +28,13 @@ N_n_2	41
 
 ------------------
 
-m_det	2000
+m_det	1000
 exposure	365
 E_min	5
 E_max	100
 
-tbin_width   1
-start_time   1	
 
-BG_level	1e-5
+BG_level	1e-10
 dE	1
 
 USE_BINNED_DATA	1

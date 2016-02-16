@@ -19,6 +19,9 @@ Astrophysics::Astrophysics()
     fraction = NULL;
     v_lag = NULL;
     v_rms = NULL;
+	v_lag_x = NULL;
+	v_lag_y = NULL;
+	v_lag_z = NULL;
 
     vel_params = NULL;
 
@@ -73,19 +76,29 @@ double Astrophysics::load_params()
       v_lag = new double[N_dist];
       v_rms = new double[N_dist];
 
+      v_lag_x = new double[N_dist];
+	  v_lag_y = new double[N_dist];
+	  v_lag_z = new double[N_dist];
+
       double v_lag_vec[3];
 
       for (int i = 0; i < N_dist; i++)
       {
-	sprintf(numstr, "%d", i+1);
-	fraction[i] = read_param_double(&file, "fraction"+std::string(numstr));
-	read_param_vector(&file, "v_lag"+std::string(numstr),v_lag_vec, 3);
-	v_rms[i] = read_param_double(&file, "v_rms" + std::string(numstr));
+		  sprintf(numstr, "%d", i+1);
+		  fraction[i] = read_param_double(&file, "fraction"+std::string(numstr));
+		  read_param_vector(&file, "v_lag"+std::string(numstr),v_lag_vec, 3);
+		  v_rms[i] = read_param_double(&file, "v_rms" + std::string(numstr));
 
         //Calculate length of v_lag
         v_lag[i] = sqrt(v_lag_vec[0]*v_lag_vec[0] + v_lag_vec[1]*v_lag_vec[1] + v_lag_vec[2]*v_lag_vec[2]);
+		v_lag_x[i] = v_lag_vec[0];
+		v_lag_y[i] = v_lag_vec[1];
+		v_lag_z[i] = v_lag_vec[2];
       }
       velocityIntegral = &velInt_maxwell;
+	  modifiedVelocityIntegral = &velInt_maxwell_modified;
+	  //std::cout << "In Astrophysics_Class.cc: " << std::endl;
+	  //std::cout << "\t\t Using velInt_maxwell_modified..." << std::endl;
     }
     else if (dist_type == "lisanti")
     {
@@ -228,8 +241,12 @@ double Astrophysics::initialise_terms(int N, int dir)
    }
    else
    {
-      vel_params_forward = new double[N_vp];
-      vel_params_backward = new double[N_vp];
+	   std::vector<double> vp(N_vp);
+	   for (int i = 0; i < N_ang; i++)
+	   {
+		   vel_params_ang.push_back(vp);
+		
+	   }
    }
 }
 
@@ -246,7 +263,7 @@ double Astrophysics::normalise_terms(int dir)
   double norm2 = 0;
   if (dir == 0)
   {
-          F.function = &polyf;
+      F.function = &polyf;
 	  F.params = NULL;
 
 	  double error;
@@ -266,15 +283,15 @@ double Astrophysics::normalise_terms(int dir)
   else
   {
       //------------------------------------------------
-      std::cout  << "Normalisation not working for non-directional distributions - need to distinguish between forward and back...Also need to actually adjust - possibly use a ratio parameter" << std::endl;
-       exit (EXIT_FAILURE);
+      //std::cout  << "Normalisation not working for non-directional distributions - need to distinguish between forward and back...Also need to actually adjust - possibly use a ratio parameter" << std::endl;
+       //exit (EXIT_FAILURE);
       //-------------------------------------------------
 
       double error;
       int status;
 
-      F.function = &polyf;
-      F.params = NULL;
+      F.function = &polyf_total;
+      F.params = this;
 
       status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm, &error);
 
@@ -283,18 +300,13 @@ double Astrophysics::normalise_terms(int dir)
 	    std::cout << "GSL rounding error!" << std::endl;
 	    std::cout << norm << std::endl;
       }
-
-      F.function = &polyf;
-      F.params = NULL;
-
-      status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm2, &error);
-
-      if (status ==  GSL_EROUND)
-      {
-	    std::cout << "GSL rounding error!" << std::endl;
-	    std::cout << norm2 << std::endl;
-      }
-
+	  
+	  //This is a strangely fixed normalisation!
+	  for (int k = 0; k < N_ang; k++)
+	  {
+		  vel_params_ang[k][0] += log(N_ang*norm*(cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)));
+	  }
+	  
       //Free workspace
       gsl_integration_workspace_free (workspace);
   }

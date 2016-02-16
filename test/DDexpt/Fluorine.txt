@@ -24,7 +24,7 @@ E_max	50
 
 
 BG_level	1e-10
-dE	1e-10
+dE	1
 
-USE_BINNED_DATA	0
-bin_width	1e-6
+USE_BINNED_DATA	1
+bin_width	1

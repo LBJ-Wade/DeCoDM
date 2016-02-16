@@ -16,6 +16,7 @@
 #include "DMUtils.h"
 #include "Distributions.h"
 #include "Neutrinos.h"
+#include "Parametrisations.h"
 
 #include "gsl/gsl_integration.h"
 #include "gsl/gsl_errno.h"
@@ -32,9 +33,13 @@ double loglikelihood(double * params, int* num_hard, double *result);
 double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int vmode, int dir);
 double geteventnumbers(double * params, int* num_hard, double *Ne);
 double RecalcAsimovData(double m_x, double sigma_SI, double sigma_SD);
+double RecalcData(double m_x, double sigma_SI, double sigma_SD);
 double CalcAsimovLike(double m_x, double sigma_SI, double sigma_SD,double A_day, double A_night);
+double CalcDirLike(double m_x, double sigma_SI, double sigma_SD);
+double CalcMixedLike(double m_x, double Ne, double A);
+void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD);
 
-static std::vector<Detector> experiments;
+//static std::vector<Detector> experiments;
 
 //------------Interface with fortran--------
 
@@ -49,6 +54,9 @@ extern "C" double geteventnumbers_(double * params, int* num_hard, double *Ne)
 }
 
 extern "C" { void dsinterface_nevents2_( double*, double*, double*, double*, double*, double*, double* ); }
+
+//------------Interface with python---------
+
 
 //------------Function definitions----------
 
@@ -80,19 +88,6 @@ double geteventnumbers(double * params, int* num_hard, double *Ne)
 	exit (EXIT_FAILURE);
     }
 
-    //Check to make sure correct 'direction' option is being used
-    if ((DIR != 0)&&(DIR != 1))
-    {
-	std::cout << "Must specify dir = 0 or dir = 1 in params.ini" << std::endl;
-        exit (EXIT_FAILURE);
-    }
-
-
-    if ((DIR == 1))
-    {
-	std::cout << "Directional detection is not currently supported..." << std::endl;
-        exit (EXIT_FAILURE);
-    }
 
     char numstr[21]; // enough to hold all numbers up to 64-bits
 
@@ -127,6 +122,7 @@ double geteventnumbers(double * params, int* num_hard, double *Ne)
     theory.sigma_SI = 0;
     theory.sigma_SD = pow(10,params[1]);
   }
+  
 
   int N_params = *num_hard;
   int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
@@ -152,7 +148,7 @@ double geteventnumbers(double * params, int* num_hard, double *Ne)
   {
     //std::cout << N_params << std::endl;
       double N_vp = N_params-offset;
-      astro.initialise_bins(N_vp, DIR);
+      astro.initialise_bins(N_vp, 0);
       astro.vel_params[0] = 0;
       for (int i = 1; i < N_vp; i++)
       {
@@ -164,7 +160,7 @@ double geteventnumbers(double * params, int* num_hard, double *Ne)
       //Exit if bins cannot be normalised
       if (astro.normalise_bins() == -1) return 1e30;
 
-      astro.rescale_bins(DIR);
+      astro.rescale_bins(0);
       astro.velocityIntegral = &velInt_isotropicBinned;
   }
 
@@ -184,21 +180,29 @@ double geteventnumbers(double * params, int* num_hard, double *Ne)
   {
 
     //N_params++;
-    int N_vp = N_params - offset - 1;
-    astro.initialise_terms(N_vp, DIR);
+    //int N_vp = N_params - offset - 1;
+	int N_vp = N_terms + 1;
+	astro.initialise_terms(N_vp, 1);
     //astro.vel_params[0] = 0;
-    for (int i = 0; i < N_vp; i++)
-    {
-          astro.vel_params[i] = params[i+offset+1];
-    }
-    //astro.normalise_terms(DIR);
+	for (int i = 0; i < N_ang; i++)
+	{
+		astro.vel_params_ang[i][0] = 0;
+	    for (int j = 1; j < N_vp; j++)
+	    {
+	          astro.vel_params_ang[i][j] = params[j + i*N_terms + offset];
+	    }
+	}
+	//HERE - sort out normalisation!
+    astro.normalise_terms(1);
+	
+	//Here now!
     astro.velocityIntegral = &velInt_isotropicPoly;
    }
   
   else if ((vmode == 4))
     {
       int N_vp = 1000;
-      astro.initialise_bins(N_vp, DIR);
+      astro.initialise_bins(N_vp, 0);
       //astro.vel_params[0] = 0;
       for (int i = 0; i < N_vp; i++)
 	{
@@ -271,8 +275,9 @@ double loglikelihood(double * params, int* num_hard, double *result)
   double loglike = 0;
 
   static int count = 0;
-
-  //static std::vector<Detector> experiments;
+  static int runcount = 0;
+  std::cout << runcount++ << std::endl;
+  static std::vector<Detector> experiments;
 
 
 
@@ -296,19 +301,12 @@ double loglikelihood(double * params, int* num_hard, double *result)
 	exit (EXIT_FAILURE);
     }
 
-    //Check to make sure correct 'direction' option is being used
-    if ((DIR != 0)&&(DIR != 1))
-    {
-	std::cout << "Must specify dir = 0 or dir = 1 in params.ini" << std::endl;
-        exit (EXIT_FAILURE);
-    }
-
-
+	/*
     if ((DIR == 1))
     {
-	std::cout << "Directional detection is not currently supported..." << std::endl;
-        exit (EXIT_FAILURE);
-    }
+		std::cout << "Directional detection is not currently supported..." << std::endl;
+		exit (EXIT_FAILURE);
+    }*/
 
     char numstr[21]; // enough to hold all numbers up to 64-bits
 
@@ -323,6 +321,7 @@ double loglikelihood(double * params, int* num_hard, double *result)
 	    experiments[i].bin_data();
 	    experiments[i].load_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
 	  }
+	  if (experiments[i].USE_DIR == 1) experiments[i].angular_bin_data(N_ang);
     }
 
     count++;
@@ -331,6 +330,7 @@ double loglikelihood(double * params, int* num_hard, double *result)
 
   //Load in 'theory' parameters from input sample
   theory.m_x = pow(10,params[0]);
+  //std::cout << theory.m_x << std::endl;
   if (USE_SI)
   {
     theory.sigma_SI = pow(10,params[1]);
@@ -349,6 +349,8 @@ double loglikelihood(double * params, int* num_hard, double *result)
     theory.sigma_SI = 0;
     theory.sigma_SD = pow(10,params[1]);
   }
+  
+  //theory.PrintAll();
 
 
   int N_params = *num_hard;
@@ -365,6 +367,12 @@ double loglikelihood(double * params, int* num_hard, double *result)
   {
     //Use parameters from 'dist.txt' file
     astro.load_params();
+	if (N_params > 2)
+	{
+		astro.v_lag[0] = params[2];
+		astro.v_lag_z[0] = params[2];
+		astro.v_rms[0] = params[3];
+	}
 
   }
 
@@ -375,7 +383,7 @@ double loglikelihood(double * params, int* num_hard, double *result)
   {
     //std::cout << N_params << std::endl;
       double N_vp = N_params-offset;
-      astro.initialise_bins(N_vp, DIR);
+      astro.initialise_bins(N_vp, 0);
       astro.vel_params[0] = 0;
       for (int i = 1; i < N_vp; i++)
       {
@@ -387,7 +395,7 @@ double loglikelihood(double * params, int* num_hard, double *result)
       //Exit if bins cannot be normalised
       if (astro.normalise_bins() == -1) return 1e30;
 
-      astro.rescale_bins(DIR);
+      astro.rescale_bins(0);
       astro.velocityIntegral = &velInt_isotropicBinned;
   }
 
@@ -407,21 +415,28 @@ double loglikelihood(double * params, int* num_hard, double *result)
   {
 
     //N_params++;
-    int N_vp = N_params - offset - 1;
-    astro.initialise_terms(N_vp, DIR);
+    //int N_vp = N_params - offset - 1;
+	int N_vp = N_terms + 1;
+	astro.initialise_terms(N_vp, 1);
     //astro.vel_params[0] = 0;
-    for (int i = 0; i < N_vp; i++)
-    {
-          astro.vel_params[i] = params[i+offset+1];
-    }
-    //astro.normalise_terms(DIR);
-    astro.velocityIntegral = &velInt_isotropicPoly;
+	for (int i = 0; i < N_ang; i++)
+	{
+		astro.vel_params_ang[i][0] = 0;
+	    for (int j = 1; j < N_vp; j++)
+	    {
+	          astro.vel_params_ang[i][j] = params[j + i*N_terms + offset];
+	    }
+	}
+	//std::cout << "Got to here!" << std::endl;
+	//HERE - sort out normalisation!
+    astro.normalise_terms(1);
+    astro.velocityIntegral = &velInt_polytotal;
    }
   
   else if ((vmode == 4))
     {
       int N_vp = 1000;
-      astro.initialise_bins(N_vp, DIR);
+      astro.initialise_bins(N_vp, 0);
       //astro.vel_params[0] = 0;
       for (int i = 0; i < N_vp; i++)
 	{
@@ -509,8 +524,8 @@ double loglikelihood(double * params, int* num_hard, double *result)
 
   for (int i = 0; i < N_expt; i++)
   {
-    loglike += likelihood(&(experiments[i]), &theory, &astro, vmode, DIR);
-	//std::cout << loglike << std::endl;
+    loglike -= likelihood(&(experiments[i]), &theory, &astro, vmode, experiments[i].USE_DIR);
+	//std::cout << theory.m_x << "\t" << theory.sigma_SI << "\t" << loglike << std::endl;
   }
 
   
@@ -602,6 +617,35 @@ double RecalcAsimovData(double m_x, double sigma_SI, double sigma_SD)
 	
 }
 
+double RecalcData(double m_x, double sigma_SI, double sigma_SD)
+{
+	static int count = 0;
+	//Check to make sure the detector data has been loaded from file...
+	if (count == 0)
+	{
+        //Load global parameters
+        load_params("params.ini");
+	
+	    char numstr[21]; // enough to hold all numbers up to 64-bits
+
+	      //Load experimental parameters
+	    for (int i = 0; i < N_expt; i++)
+	    {
+		  sprintf(numstr, "%d", i+1);
+		  experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
+	    }
+		
+	    count++;
+	}
+	
+	for (int i = 0; i < N_expt; i++)
+	{
+		generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
+	}
+	
+}
+
+
 double CalcAsimovLike(double m_x, double sigma_SI, double sigma_SD, double A_day, double A_night)
 {
 	//NOTE - I need to maximise the two likelihoods separately!!!
@@ -677,6 +721,155 @@ double CalcAsimovLike(double m_x, double sigma_SI, double sigma_SD, double A_day
 	
 }
 
+double CalcDirLike(double m_x, double sigma_SI, double sigma_SD)
+{	
+    
+	double loglike = 0;
+	//Be careful, I'm doing something a little funny here!
+
+    Astrophysics astro;
+
+    astro.load_params();
+	
+	//astro.velocityIntegral = &velInt_maxwell;
+	
+    Particlephysics theory;
+    theory.m_x = m_x;
+    theory.sigma_SI = sigma_SI;
+    theory.sigma_SD = sigma_SD;
+
+    //double scaling = 1;
+    //if (astro.dist_type == "lisanti")
+    //  {
+    //     scaling = 1.0/(Lisanti_norm(&astro));
+    //  }
+	
+	if (INCLUDE_NU) LoadFluxTable();
+	
+    for (int i = 0; i < N_expt; i++)
+    {
+      loglike += likelihood(&(experiments[i]), &theory, &astro, 0, 1);
+    }
+	if (INCLUDE_NU) ClearFluxTable();
+	
+	return loglike;
+}
+
+double CalcMixedLike(double m_x, double Ne, double A)
+{	
+    
+	if (Ne < 0) return 1e30;
+	//if (Ne < 1e-45) return 1e30;
+	//if (A < 1e-36) return 1e30;
+	//if (A < 0) return 1e30;
+	//if (Ne < 1e-6) Ne = 0;
+	//if (A < 1e-3) A = 0;
+	//if (Ne < 1e-5) Ne = 0;
+	if ((A < 0)||(A > 1)) return 1e30;
+	//if ((A < 0)) return 1e30;
+	//if (A < 1e-5) A = 0;
+	//if ((m_x < 49)||(m_x > 51)) return 1e30;
+	if (m_x > 1e5) return 1e30;
+	//if (A < 1e-6) A = 0;
+	//std::cout << A << std::endl;
+	double loglike = 0;
+	//Be careful, I'm doing something a little funny here!
+
+    Ne = experiments[0].No();
+
+    Astrophysics astro;
+
+    astro.load_params();
+	
+	//astro.velocityIntegral = &velInt_maxwell;
+	
+    Particlephysics theory_SI;
+    theory_SI.m_x = m_x;
+    theory_SI.sigma_SI = 1e-45;
+    theory_SI.sigma_SD = 0;
+	theory_SI.sigma_O5 = 0;
+	theory_SI.sigma_O7 = 0;
+	theory_SI.sigma_O15 = 0;
+	
+    Particlephysics theory_O7;
+    theory_O7.m_x = m_x;
+    theory_O7.sigma_SI = 0;
+    theory_O7.sigma_SD = 0;
+	theory_O7.sigma_O5 = 1e-45;
+	theory_O7.sigma_O7 = 0;	
+	theory_O7.sigma_O15 = 0;
+	
+	Detector* expt = &(experiments[0]);
+	
+	ParamSet parameters_SI(expt, &theory_SI, &astro);
+    ParamSet parameters_O7(expt, &theory_O7, &astro);
+
+	double Ne_SI = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters_SI);
+    double Ne_O7 = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters_O7);
+	//std::cout << Ne_SI << "\t" << Ne_O7 << std::endl;
+	
+	//if (m_x > 1e5)
+	//{
+	    //std::cout << m_x << "\t" << Ne << "\t" << A <<  std::endl;
+	//}
+	//std::cout << Ne_SI << "\t" << Ne_O7 << "\t" << Ne << "\t" << A <<  std::endl;
+	
+
+	Particlephysics theory_test;
+	theory_test.m_x = m_x;
+	theory_test.sigma_SI = (Ne_O7/Ne_SI)*A;
+	theory_test.sigma_SD = 0;
+	theory_test.sigma_O5 = 0;
+	theory_test.sigma_O7 = 0;
+	theory_test.sigma_O15 = 0;
+	
+	Particlephysics theory;
+	theory.m_x = m_x;
+	//theory.sigma_SI = 1e-45*(Ne/Ne_SI)*(1-A);
+	theory.sigma_SI = 1e-45*(Ne/Ne_SI)*(1-A);
+	if (A > 1) 
+	{
+		//std::cout << "SI\t" << theory.sigma_SI << std::endl;
+		//std::cout << "O7\t" << theory.sigma_O7 << std::endl;
+	}
+	//theory.sigma_SI = 0;
+    theory.sigma_SD = 0;
+	//theory.sigma_O15 = 0;
+	theory.sigma_O7 = 0;
+	//theory.sigma_O15 = 1e-45*(Ne/Ne_O7)*A;
+	//theory.sigma_O7 = 1e-40*(Ne/Ne_O7)*(A);
+	theory.sigma_O5 = 1e-45*(Ne/Ne_O7)*A;
+	//std::cout << theory.sigma_O7 << std::endl;
+	//theory.sigma_O7 = 0;
+	
+	if (Ne <  1e-44)
+	{
+		std::cout << m_x << "\t" << "Ne_SI: " << Ne << " ; Ne_O7: " << A << std::endl;
+		std::cout << likelihood(&(experiments[0]), &theory, &astro, 0, 1) << "\t" << likelihood(&(experiments[0]), &theory_test, &astro, 0, 1) << std::endl;
+	}
+	
+    //double scaling = 1;
+    //if (astro.dist_type == "lisanti")
+    //  {
+    //     scaling = 1.0/(Lisanti_norm(&astro));
+    //  }
+	
+	if (INCLUDE_NU) LoadFluxTable();
+	
+    for (int i = 0; i < N_expt; i++)
+    {
+      loglike += likelihood(&(experiments[i]), &theory, &astro, 0, experiments[i].USE_DIR);
+    }
+	if (INCLUDE_NU) ClearFluxTable();
+	
+	//if (m_x > 1e3) loglike+=(m_x - 1e3);
+	
+	return loglike;
+}
+
+
+
+
 
 
 
@@ -685,7 +878,7 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 
     ParamSet parameters(expt,theory, astro);
 
-    int No = expt->data.size();
+    
       //Calculate number of expected and observed events
 
     double PL = 0;
@@ -704,55 +897,126 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 	     {
 		No_bin = expt->binned_data[i];
 	     }
-         //Need to decide whether to do reweighting of the likelihood
-	     //PL += (1.0/expt->N_Ebins)*PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 		 PL += PoissonLike(expt, parameters, &DMRate, No_bin, expt->bin_edges[i], expt->bin_edges[i+1]);
 
 	   }
 	}
 	else
 	{
-	    //std::cout << "rho_x:\t" << astro->rho_x << std::endl;
+		if ((vmode != 3)||(dir == 0))
+		{
+			int No = expt->data.size();
+			
+		    //Calculate expected numbers of events
+		    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
+		
+		    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
+	        double Ne_nu = 1e-10;
+			if (INCLUDE_NU) Ne_nu = (expt->m_det)*(expt->exposure)*N_expected(&NeutrinoRate, parameters);
+		
+		    double Ne_tot = Ne+Ne_BG+Ne_nu;
+	        //std::cout << Ne_tot << std::endl;
+		    //Calculate signal/BG fractions
+		    double f_S = Ne/Ne_tot;
+		    double f_BG = Ne_BG/Ne_tot;
 
-	    //Calculate expected numbers of events
-	    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
-	    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
-        double Ne_nu = (expt->m_det)*(expt->exposure)*N_expected(&NeutrinoRate, parameters);
+			//std::cout <<  theory->m_x << "\t" << theory->sigma_SI << "\t" << Ne << "\t" << No << "\t" << std::endl;
 
-	    double Ne_tot = Ne+Ne_BG+Ne_nu;
+		    PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
+			//std::cout << Ne_tot << std::endl;
+		    //Calculate the event-by-event part
+		    double eventLike = 0;
+		    for (int i = 0; i < No; i++)
+		    {
+				//std::cout << expt->data[i].energy << "\t" << expt->data[i].theta << "\t" <<  expt->data[i].phi << std::endl;
+				eventLike = 0;
+		      if (dir == 0)  //Do it isotropically!
+		      {
+				  //---------FIX THE CONVOLVED RATE---------------
+			  
+				  setCurrentRate(&DMRate);
+				  eventLike = (expt->exposure)*(expt->m_det)*DMRate(expt->data[i].energy,&parameters)/Ne_tot;
+			  
+				  setCurrentRate(&BGRate);
+				  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
+				  if (INCLUDE_NU)
+				  {
+				      setCurrentRate(&NeutrinoRate);
+				      eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
+			      }
+				  PL -= log(eventLike);
+				  //std::cout << PL << std::endl;
+		      }
+		      else 		//Do it directionally!
+		      {
+				  //Note - currently can't convolve...
+				  //setCurrentRate(&DMRate);
+				  eventLike = (expt->exposure)*(expt->m_det)*DMRateDirectional(expt->data[i].energy,expt->data[i].theta, expt->data[i].phi,&parameters)/Ne_tot;
+			      //std::cout << eventLike << std::endl;
+				  //Assuming all backgrounds are isotropic
+				  setCurrentRate(&BGRate);
+				  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
+				  if (INCLUDE_NU)
+				  {
+				      setCurrentRate(&NeutrinoRate);
+				      eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
+			      }
+				  PL -= log(eventLike);
+		      }
+		    }
+		}
+		else if ((vmode == 3)&&(dir == 1))
+		{
+			for (int j = 0; j < N_ang; j++)
+			{
+				//std::cout << j << std::endl;
+				int No = expt->data_ang[j].size();
+			
+			    astro->velocityIntegral = &velInt_DRT;
+				j_bin = j;
+				parameters.astroParams = astro;
+			    //Calculate expected numbers of events
+			    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
+		
+			    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
+		        double Ne_nu = 1e-10;
+				if (INCLUDE_NU) Ne_nu = (expt->m_det)*(expt->exposure)*N_expected(&NeutrinoRate, parameters);
+		
+			    double Ne_tot = Ne+Ne_BG+Ne_nu;
+		        //std::cout << Ne_tot << std::endl;
+			    //Calculate signal/BG fractions
+			    double f_S = Ne/Ne_tot;
+			    double f_BG = Ne_BG/Ne_tot;
 
-	    //Calculate signal/BG fractions
-	    double f_S = Ne/Ne_tot;
-	    double f_BG = Ne_BG/Ne_tot;
+				//std::cout <<  theory->m_x << "\t" << theory->sigma_SI << "\t" << Ne << "\t" << No << "\t" << std::endl;
 
+			    PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
+				//std::cout << Ne_tot << std::endl;
+			    //Calculate the event-by-event part
+			    double eventLike = 0;
+			    for (int i = 0; i < No; i++)
+			    {
 
+					  eventLike = 0;
 
-	    PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
-
-	    //std::cout << "Ne_S:\t" << Ne << ";\tNe_BG:\t" << Ne_BG << std::endl;
-
-
-	    //Calculate the event-by-event part
-	    double eventLike = 0;
-	    for (int i = 0; i < No; i++)
-	    {
-	      if (dir == 0)  //Do it isotropically!
-	      {
-		  setCurrentRate(&DMRate);
-		  eventLike = (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
-		  setCurrentRate(&BGRate);
-		  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
-		  setCurrentRate(&NeutrinoRate);
-		  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data[i].energy,&parameters)/Ne_tot;
-		  PL -= log(eventLike);
-	      }
-	      else 		//Do it directionally!
-	      {
-
-	      }
-	    }
+			  
+					  setCurrentRate(&DMRate);
+					  eventLike = (expt->exposure)*(expt->m_det)*DMRate(expt->data_ang[j][i].energy,&parameters)/Ne_tot;
+		  
+					  setCurrentRate(&BGRate);
+					  eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data_ang[j][i].energy,&parameters)/Ne_tot;
+					  if (INCLUDE_NU)
+					  {
+					      setCurrentRate(&NeutrinoRate);
+					      eventLike += (expt->exposure)*(expt->m_det)*convolvedRate(expt->data_ang[j][i].energy,&parameters)/Ne_tot;
+				      }
+					  PL -= log(eventLike);
+			      }
+		  	}
+			
+			
+		}
 	  }
-
   return PL;
 
 }

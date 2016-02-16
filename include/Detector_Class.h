@@ -13,9 +13,12 @@ class Detector
     std::vector<double> frac_n; //Nuclear mass fraction of each element/isotope
     std::vector<double> m_n; //Nuclear mass in amu of each element/isotope
 
-    std::vector<double> N_p; //Number of protons
-    std::vector<double> N_n; //Number of neutrons
+    std::vector<int> N_p; //Number of protons
+    std::vector<int> N_n; //Number of neutrons
     
+	std::vector< std::vector<double> > EFTparams; //Parameters for EFT form factors
+	std::vector<int> maxpow; //Max power of y in Form factor expansion
+	
     //Spin parameters - NB: possibly introduce a nuclei class (could keep separate 'nuclear' data files and load them up when needed...)
     std::vector<double> J;
     std::vector<double> Sp;
@@ -36,12 +39,18 @@ class Detector
 
     //Bin data and use binned likelihood analysis
     int USE_BINNED_DATA;
+	
+	//Format of the data ((1) - energy-angle space; or (2) - vector space)
+    int DATA_FORMAT;
 
     //Bin width and number of bins for binned analysis
     double bin_width;
     double tbin_width;
     int N_Ebins;
     int N_tbins;
+	
+	//Use directional information
+	int USE_DIR;
 
     //Energy resultion (keV)
     double dE;
@@ -57,8 +66,8 @@ class Detector
 	std::vector<double> neutrino_data; //List of neutrino events in each bins
     double No(){return data.size();}
 
-
-
+    void angular_bin_data(int N_ang_bins);
+    std::vector<std::vector<Event> > data_ang;
 
    //Constructor
     Detector(); //Default constructor
@@ -71,9 +80,28 @@ class Detector
     double SI_formfactor(double E, int i_isotope);
     double SD_formfactor(double E, int i_isotope, int i_component);
 
+    double EFT_formfactor(double E, int i_op, int i_isotope, int i_component);
+
+    //EFT response functions
+	double F_EFT (double E, int i_isotope, int i_component, int i_op);
+	
+	//Wrapper functions for each of the different i_fun components
+	double F_M(double E, int i_isotope, int i_component);
+	double F_Sigma1(double E, int i_isotope, int i_component);
+	double F_Sigma2(double E, int i_isotope, int i_component);
+	double F_Delta(double E, int i_isotope, int i_component);
+	double F_Phi2(double E, int i_isotope, int i_component);
+	double F_MPhi2(double E, int i_isotope, int i_component);
+	double F_Sigma1Delta(double E, int i_isotope, int i_component);
+
+	double F_SD(double E, int i_isotope, int i_component);
+
     //Enhancement factors
     double SI_enhancement(int i_isotope);
     double SD_enhancement(int i_isotope);
+
+	//Experimental performance functions
+	double efficiency(double E);
 
     //-------------------------------ADD HERE THE ROUTINE THAT LOADS IN THE DATA???----------
 

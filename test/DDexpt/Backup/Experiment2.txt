@@ -7,13 +7,13 @@ J_1	0
 N_p_1	18
 N_n_1	22
 
-m_det	333
+m_det	500
 exposure	365
-E_min	2
+E_min	5
 E_max	100
 
-BG_level	1e-15
-dE	1e-15
+BG_level	1e-10
+dE	1
 
 USE_BINNED_DATA	1
 bin_width	1

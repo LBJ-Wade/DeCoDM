@@ -152,7 +152,7 @@ double LoadFluxTable()
 {
 	//std::cout << "Need a flag to specify whether the flux table has been loaded..." << std::endl;
 	std::string line;
-    std::ifstream file ("../data/NeutrinoSpectrum.txt");
+    std::ifstream file ("data/NeutrinoSpectrum.txt");
     if (file.is_open())
     {
 	    //Calculate number of lines

@@ -16,6 +16,7 @@
 #include "Particlephysics_Class.h"
 #include "Neutrinos.h"
 #include "Distributions.h"
+#include "GenerateEvents.h"
 
 #include "gsl/gsl_rng.h"
 #include "gsl/gsl_randist.h"
@@ -26,101 +27,95 @@
 #endif
 
 //File scope vairables
-const gsl_rng_type * T;
- gsl_rng * r;
+static const gsl_rng_type * T;
+static gsl_rng * r;
+ 
 
-//--------Function Prototypes-----------
+ void loadExperiments()
+ {
+ 	static int count = 0;
+ 	//Check to make sure the detector data has been loaded from file...
+ 	if (count == 0)
+ 	{
+         //Load global parameters
+         //load_params("params.ini");
+	
+	     char numstr[21]; // enough to hold all numbers up to 64-bits
 
-void generateEvents(Detector* expt,double m_x, double sigma_SI, double sigma_SD);
-void printEvents(std::vector<Event> data, std::string filename);
-
-double generateBGEvents(Detector* expt);
-void generateBGEvents_Asimov(Detector* expt);
-
-double generateNeutrinoEvents(Detector* expt);
-void generateNeutrinoEvents_Asimov(Detector* expt);
-
-void calcRotationMatrix(double* rot_matrix, double* v_lag);
-void rotateEvent(double* theta, double* phi, double* rot_matrix);
-
-
-
-//--------Main - Event Generator---------
-int main(int argc, char *argv[])
-{
-  //Read in command line arguments
-  if (argc != 4)
-  {
-     std::cout << "Not enough arguments - require: m_x (Gev); sigma_SI (cm^2); sigma_SD (cm^2)" << std::endl;
-    return 0;
-  }
-
-  //DM mass
-  double m_x = atof(argv[1]);
-
-  //DM SI Cross-section
-  double sigma_SI = atof(argv[2]);
-
-  //DM SD Cross-section
-  double sigma_SD = atof(argv[3]);
-
-  //Initialise RNG
-  gsl_rng_env_setup();
-    T = gsl_rng_default;
-    r = gsl_rng_alloc (T);
-
-    gsl_rng_set(r,(unsigned)time(NULL));
-
-	//Load global parameters
-	load_params("params.ini");
-  
-
-  std::vector<Detector> experiments;
-
-  //------------------------------------------------------------------------------------------------
-  //Check the existence of the experiment files------------------------------------------------------
-  //-------------------------------------------------------------------------------------------------
-
-
-  char numstr[21]; // enough to hold all numbers up to 64-bits
-
-  for (int i = 0; i < N_expt; i++)
-  {
-      sprintf(numstr, "%d", i+1);
-      experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
-      std::cout << "*********************************************" << std::endl;
-      std::cout << "***** " << "Experiment"+std::string(numstr) << " *******************" << std::endl;
-      std::cout << "*********************************************" << std::endl;
-      experiments[i].displayParameters();
-      generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
-
-      experiments[i].print_data(events_folder + "Events"+std::string(numstr)+".txt");
-      if (experiments[i].USE_BINNED_DATA) experiments[i].print_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
-  }
-
-
-  //Write a file explaining what inputs were used
-  std::ofstream file("input.txt");
-  if (file.is_open())
-    {
-      file << "m_x/GeV\t" << m_x << std::endl;
-      file << "sigma_SI/cm^2\t" << sigma_SI << std::endl;
-      file << "sigma_SD/cm^2\t" << sigma_SD << std::endl;
-
-      file.close();
-    }
-  else std::cout << "Unable to open file input.txt" << std::endl;
+	     for (int i = 0; i < N_expt; i++)
+	     {
+	         sprintf(numstr, "%d", i+1);
+	         experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
+			 if (LOUD_MOUTH)
+			 {
+				 /*
+		         std::cout << "*********************************************" << std::endl;
+		         std::cout << "***** " << "Experiment"+std::string(numstr) << " *******************" << std::endl;
+		         std::cout << "*********************************************" << std::endl;
+		         experiments[i].displayParameters();
+				 */
+		     }
+	     }
+		
+ 	    count++;
+ 	}
+	
+ }
+ 
+ void initialiseRNG()
+ {
+     //Initialise RNG
+     gsl_rng_env_setup();
+     T = gsl_rng_default;
+     r = gsl_rng_alloc (T);
+     gsl_rng_set(r,(unsigned)time(NULL));
+ }
+ 
+ void clearRNG()
+ {
+ 	
+    gsl_rng_free (r);
+	
+ }
 
 
 
-
-  //free(experiments);
-
-   gsl_rng_free (r);
-
-  return 0;
-}
-
+ void generateAllEvents(double m_x, double sigma_SI, double sigma_SD)
+ {
+     for (int i = 0; i < N_expt; i++)
+     {
+		 if (LOUD_MOUTH)
+		 {
+			  char numstr[21];
+			  sprintf(numstr, "%d", i+1);
+			  std::cout << std::endl;
+	         std::cout << "*********************************************" << std::endl;
+	         std::cout << "***** " << "Experiment"+std::string(numstr) << " *******************" << std::endl;
+	         std::cout << "*********************************************" << std::endl;
+	         experiments[i].displayParameters();	
+		 }
+         generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
+	 }
+ }
+ 
+ void generateAllEvents_Ne(double m_x, int No_target, int op)
+ {
+     for (int i = 0; i < N_expt; i++)
+     {
+         generateEvents_Ne(&(experiments[i]), m_x, No_target, op);
+	 }
+ }
+ 
+ void printAllData()
+ {
+	 char numstr[21];
+     for (int i = 0; i < N_expt; i++)
+     {
+		 sprintf(numstr, "%d", i+1);
+         experiments[i].print_data(events_folder + "Events"+std::string(numstr)+".txt");
+         if (experiments[i].USE_BINNED_DATA) experiments[i].print_asimov_data(events_folder + "Asimov_Events"+std::string(numstr)+".txt");
+	 }
+ }
 
 
 
@@ -134,6 +129,9 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
   double Ne = 0;
   double Ne_BG = 0;
   double Ne_nu = 0;
+
+  //Empty previous events
+  expt->data.clear();
 
   //Initialise and load in astrophysics
 
@@ -149,105 +147,300 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
   theory.sigma_SD = sigma_SD;
 
   ParamSet parameters(expt,&theory, &astro);
+  
 
+  
   double scaling = 1;
   if (astro.dist_type == "lisanti")
     {
        scaling = 1.0/(Lisanti_norm(&astro));
     }
 
-  //Generate ordinary events
+    //Generate ordinary events
     Ne = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
-
     int No = gsl_ran_poisson(r,Ne);
-
+    //std::cout << Ne << "\t" << No << std::endl;
     setCurrentRate(&DMRate);
 
     //Initialise rotation matrix
     double rot_matrix[9];
     //calcRotationMatrix(rot_matrix,astro.v_lag);
-
-    //Calculate exposure in seconds (from days)
-    double exp_s = 60.0*60.0*24.0*expt->exposure;
-    
+	//std::cout << v_min(expt->E_min,expt->m_n[0],m_x) << std::endl;
+    double p_max = 10.0*DMRateDirectional(0.0, PI/2.0, 0.0, &parameters);
+	
     for (int N = 0; N < No; )
     {
       double E = gsl_ran_flat(r,expt->E_min,expt->E_max);
 
       double phi = gsl_ran_flat(r,0,2*PI);
 
-      double p_max = convolvedRate(expt->E_min,&parameters);
-      
-      //Need to be careful about what I define as 'zero' time
-      //double time = gsl_ran_flat(r,0,expt->exposure);
-    
-      //double p_max = convolvedRate(15.0*reduced_m_GeV(expt->m_n[0], m_x)/(expt->m_n[0]*931.5e-3),&parameters);
-      //if (p_max1 > p_max) p_max = p_max1;
-      double p = convolvedRate(E,&parameters);
+	  double theta = acos(gsl_ran_flat(r,-1,1));
+
+	  //double p = convolvedRate(E,&parameters);
+	  double p = DMRateDirectional(E, theta, phi, &parameters);
+	  //*-----------------Note that I'm 
+	  //std::cout << p << "\t" << p_max << "\t" << p/p_max << std::endl;
 
       if (gsl_rng_uniform(r) < p/p_max)
       {
-	double y = -10;
-	while ((y <= -1)||(y >= 1)) //Is this the correct way of generating things...?
-	{
-	  //-----------------double check that this is the correct distribution-----------------------
-	  //y = ((v_min(E,expt->m_n[0],m_x)/astro.v_lag) + gsl_ran_gaussian(r,astro.v_rms/astro.v_lag));
-          y = gsl_ran_flat(r,-1,1);
-	}
-	double theta = acos(y);
-
-	//Rotate into correct direction - FIX THIS IT's NOT ACTUALLY ROTATING!!!
-	//rotateEvent(&theta,&phi,rot_matrix);
-
-	expt->data.push_back(Event(E,theta,phi));
-	N++;
+		expt->data.push_back(Event(E,theta,phi));
+		N++;
       }
 
     }
 
-   //Display signal event numbers
-    std::cout << "Signal:\t\t # expected = " << Ne << "; # observed = " << expt->No() << std::endl;
-
 	//Load neutrino flux table
 	LoadFluxTable();
 
+    int Ne_sig = expt->No();
     //Add BG events
     int No_BG = expt->No();
     Ne_BG = generateBGEvents(expt);
 	No_BG = expt->No() - No_BG;
 	int No_nu = expt->No();
-	Ne_nu = generateNeutrinoEvents(expt);
+	if (INCLUDE_NU) Ne_nu = generateNeutrinoEvents(expt);
     No_nu = expt->No() - No_nu;
-
 
 
     //Calculate ASIMOV data if the bin width is defined
     if ((expt->bin_width > 1e-3))
     {
-      double Ne_bin = 0;
+	    double Ne_bin = 0;
 
-      for (int i = 0; i < expt->N_Ebins; i++)
-	{
-	  Ne_bin = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
-	  expt->asimov_data[i] += Ne_bin;
-	}
-	generateBGEvents_Asimov(expt);
-	generateNeutrinoEvents_Asimov(expt);
-    }
+	    for (int i = 0; i < expt->N_Ebins; i++)
+		{
+		  Ne_bin = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
+		  expt->asimov_data[i] += Ne_bin;
+		}
 	
+		generateBGEvents_Asimov(expt);
+		if (INCLUDE_NU) generateNeutrinoEvents_Asimov(expt);
+    }
+	  
 	//Clear neutrino flux table from memory
 	ClearFluxTable();
 
-    //Display BG event numbers
-    std::cout << "Background:\t # expected = " << Ne_BG << "; # observed = " << No_BG << std::endl;
+    if (LOUD_MOUTH)
+	{
+	    std::cout << std::endl;
+	   //Display signal event numbers
+	    std::cout << "Signal:\t\t # expected = " << Ne << "; # observed = " << Ne_sig << std::endl;
 
-    //Display Neutrino event numbers
-	std::cout << "CNS:\t # expected = " << Ne_nu << "; # observed = " << No_nu << std::endl;
+	    //Display BG event numbers
+	    std::cout << "Background:\t # expected = " << Ne_BG << "; # observed = " << No_BG << std::endl;
 
-    //Display total event numbers
-    std::cout << "Total:\t\t # expected = " << Ne_nu+Ne_BG+Ne << "; # observed = " << expt->No() << std::endl;
+	    //Display Neutrino event numbers
+		if (INCLUDE_NU)
+		{
+		    std::cout << "CNS:\t\t # expected = " << Ne_nu << "; # observed = " << No_nu << std::endl;
+		}
+	    //Display total event numbers
+	    std::cout << "Total:\t\t # expected = " << Ne_nu+Ne_BG+Ne << "; # observed = " << expt->No() << std::endl;
+    }
 }
 
+double calcNe(Detector* expt, double m_x, double sigma_SI, double sigma_SD)
+{	
+  //Calculate expected number of events
+	if (sigma_SI > 1e-30) return 1e10;
+  //Initialise and load in astrophysics
+  Astrophysics astro;
+  astro.load_params();
+  //std::cout << "Astro:\t" << astro.v_lag[0] << "\t" << astro.v_rms[0] << "\t" << astro.rho_x << std::endl;
+  //std::cout << "Astro:\t" << astro.dist_type << std::endl;
+  Particlephysics theory;
+  theory.m_x = m_x;
+  theory.sigma_SI = sigma_SI;
+  theory.sigma_SD = sigma_SD;
+
+  ParamSet parameters(expt,&theory, &astro);
+  
+
+  
+  double scaling = 1;
+  if (astro.dist_type == "lisanti")
+    {
+       scaling = 1.0/(Lisanti_norm(&astro));
+    }
+
+    //Generate ordinary events
+    double Ne_S = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
+
+	double Ne_nu;
+	double Ne_BG;
+	//Load neutrino flux table
+	if (INCLUDE_NU)
+	{
+	    LoadFluxTable();
+		Ne_nu = generateNeutrinoEvents(expt);
+		//Clear neutrino flux table from memory
+		ClearFluxTable();
+	}
+	Ne_BG = generateBGEvents(expt);
+
+	return Ne_S + Ne_BG + Ne_nu;
+}
+
+double calcNe_NR(Detector* expt, double m_x, int op1, int op2, int N1, int N2)
+{	
+
+  //Initialise and load in astrophysics
+  Astrophysics astro;
+  astro.load_params();
+
+  Particlephysics theory;
+  theory.m_x = m_x;
+  
+  theory.op1 = op1;
+  theory.op2 = op2;
+  
+  theory.N1 = N1;
+  theory.N2 = N2;
+
+  ParamSet parameters(expt,&theory, &astro);
+  
+  double scaling = 1;
+  if (astro.dist_type == "lisanti")
+    {
+       scaling = 1.0/(Lisanti_norm(&astro));
+    }
+
+    //Generate ordinary events
+    double Ne_S = scaling*expt->m_det*expt->exposure*(N_expected(&DMRateNR, parameters));
+
+	return Ne_S;
+}
+
+
+void generateEvents_Ne(Detector* expt, double m_x, int No_target, int op)
+{
+	//std::cout << "This code can be rewritten for generic rates (i.e. a 'generate' dataset code and then you just set which eventrate you want to use...) - 07/11/2014" << std::endl;
+	
+  //Generate events and store as a vector in data
+  double Ne = 0;
+  double Ne_BG = 0;
+  double Ne_nu = 0;
+
+  //Empty previous events
+  expt->data.clear();
+
+  //Initialise and load in astrophysics
+
+  Astrophysics astro;
+
+
+  astro.load_params();
+  //std::cout << "Astro:\t" << astro.v_lag[0] << "\t" << astro.v_rms[0] << "\t" << astro.rho_x << std::endl;
+  //std::cout << "Astro:\t" << astro.dist_type << std::endl;
+  Particlephysics theory;
+  theory.m_x = m_x;
+  theory.sigma_SI = 0.0;
+  theory.sigma_SD = 0.0;
+  theory.sigma_O5 = 0.0;
+  theory.sigma_O7 = 0.0;
+  theory.sigma_O15 = 0.0;
+  
+  if (op == 1) theory.sigma_SI = 1e-45;
+  if (op == 4) theory.sigma_SD = 1e-45;
+  if (op == 5) theory.sigma_O5 = 1e-45;
+  if (op == 7) theory.sigma_O7 = 1e-45;
+  if (op == 15) theory.sigma_O15 = 1e-45;
+
+  ParamSet parameters(expt,&theory, &astro);
+  
+  double scaling = 1;
+  if (astro.dist_type == "lisanti")
+    {
+       scaling = 1.0/(Lisanti_norm(&astro));
+    }
+
+    //Generate ordinary events
+    Ne = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
+	theory.sigma_SI *= No_target/Ne;
+	theory.sigma_SD *= No_target/Ne;
+	theory.sigma_O5 *= No_target/Ne;
+	theory.sigma_O7 *= No_target/Ne;
+	theory.sigma_O15 *= No_target/Ne;
+
+    int No = gsl_ran_poisson(r,Ne);
+	No = No_target;
+    //std::cout << Ne << "\t" << No << std::endl;
+    setCurrentRate(&DMRate);
+
+    //Initialise rotation matrix
+    double rot_matrix[9];
+    //calcRotationMatrix(rot_matrix,astro.v_lag);
+	//std::cout << v_min(expt->E_min,expt->m_n[0],m_x) << std::endl;
+    double p_max = 10.0*DMRateDirectional(0.0, PI/2.0, 0.0, &parameters);
+	
+    for (int N = 0; N < No; )
+    {
+      double E = gsl_ran_flat(r,expt->E_min,expt->E_max);
+
+      double phi = gsl_ran_flat(r,0,2*PI);
+
+	  double theta = acos(gsl_ran_flat(r,-1,1));
+
+	  //double p = convolvedRate(E,&parameters);
+	  double p = DMRateDirectional(E, theta, phi, &parameters);
+	  //*-----------------Note that I'm 
+	  //std::cout << p << "\t" << p_max << "\t" << p/p_max << std::endl;
+
+      if (gsl_rng_uniform(r) < p/p_max)
+      {
+		expt->data.push_back(Event(E,theta,phi));
+		N++;
+      }
+
+    }
+
+	//Load neutrino flux table
+	LoadFluxTable();
+
+    int Ne_sig = expt->No();
+    //Add BG events
+    int No_BG = expt->No();
+    Ne_BG = generateBGEvents(expt);
+	No_BG = expt->No() - No_BG;
+	int No_nu = expt->No();
+	if (INCLUDE_NU) Ne_nu = generateNeutrinoEvents(expt);
+    No_nu = expt->No() - No_nu;
+
+
+    //Calculate ASIMOV data if the bin width is defined
+    if ((expt->bin_width > 1e-3))
+    {
+	    double Ne_bin = 0;
+
+	    for (int i = 0; i < expt->N_Ebins; i++)
+		{
+		  Ne_bin = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters,expt->bin_edges[i], expt->bin_edges[i+1]));
+		  expt->asimov_data[i] += Ne_bin;
+		}
+	
+		generateBGEvents_Asimov(expt);
+		if (INCLUDE_NU) generateNeutrinoEvents_Asimov(expt);
+    }
+	  
+	//Clear neutrino flux table from memory
+	ClearFluxTable();
+
+    if (LOUD_MOUTH)
+	{
+	    std::cout << std::endl;
+	   //Display signal event numbers
+	    std::cout << "Signal:\t\t # expected = " << Ne << "; # observed = " << Ne_sig << std::endl;
+
+	    //Display BG event numbers
+	    std::cout << "Background:\t # expected = " << Ne_BG << "; # observed = " << No_BG << std::endl;
+
+	    //Display Neutrino event numbers
+		std::cout << "CNS:\t\t # expected = " << Ne_nu << "; # observed = " << No_nu << std::endl;
+
+	    //Display total event numbers
+	    std::cout << "Total:\t\t # expected = " << Ne_nu+Ne_BG+Ne << "; # observed = " << expt->No() << std::endl;
+    }
+}
 
 //---------Generate BG events----------------------------------------------
 double generateBGEvents(Detector* expt)
@@ -312,9 +505,9 @@ double generateNeutrinoEvents(Detector* expt)
   ParamSet parameters(expt,NULL, NULL);
   double Ne_nu = expt->m_det*expt->exposure*(N_expected(&NeutrinoRate, parameters));
 
-  //int No_nu = gsl_ran_poisson(r,Ne_nu);
-  std::cout << "Currently setting No_nu = 1" << std::endl;
-  int No_nu = 1;
+  int No_nu = gsl_ran_poisson(r,Ne_nu);
+  //std::cout << "Currently setting No_nu = 0" << std::endl;
+  //int No_nu = 0;
   
   double E, phi, y, theta;
   double p;

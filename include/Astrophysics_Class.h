@@ -1,6 +1,7 @@
 #ifndef ASTROCLASS_H
 #define ASTROCLASS_H
 
+#include <vector>
 #include <string>
 
 class Astrophysics
@@ -15,6 +16,9 @@ class Astrophysics
         double* fraction;
         double* v_lag; //Only allowing scalar v_lag...
         double* v_rms;
+		double* v_lag_x;
+		double* v_lag_y;
+		double* v_lag_z;
 
         //Lisanti et al. parameters
         double v0;
@@ -23,9 +27,10 @@ class Astrophysics
         //Parametrization
         int N_vp;
         double* vel_params;  
+		double* vel_params_forward;
+		double* vel_params_backward;
 
-        double* vel_params_forward;
-        double* vel_params_backward;
+        std::vector<std::vector<double> > vel_params_ang;
 
         //Binned parametrisation
         double* bin_edges;
@@ -61,6 +66,7 @@ class Astrophysics
         double calc_bin_edges(double start, double end, int N_bins, double* edges);
 
         double (*velocityIntegral) (double,Astrophysics*);
+		double (*modifiedVelocityIntegral) (double,Astrophysics*);
 
         Astrophysics();
         ~Astrophysics();

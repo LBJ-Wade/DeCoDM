@@ -2,17 +2,17 @@
 dist_type maxwell
 
 #General options
-rho_x	0.4
-v_esc	544
+rho_x	0.30
+v_esc	1000
 
 #'maxwell' options
 N_dist	1
 
-fraction1	1
-v_lag1	0 0 230
-v_rms1	163
+fraction1	1.00
+v_lag1	0 0 220
+v_rms1	156
 
-fraction2	0
+fraction2	0.00
 v_lag2	0 0 50
 v_rms2	50
 

@@ -3,11 +3,12 @@
 
 #include "Astrophysics_Class.h"
 
-        double multipoleRadon(double v_q_tmp, int l_tmp, double rate (double,void*), double* params, int N);
+    double multipoleRadon(double v_q_tmp, int l_tmp, double rate (double,void*), double* params, int N);
 
 	double velInt_maxwell(double v, Astrophysics* astro);
+    double velInt_maxwell_modified(double v, Astrophysics* astro);
   
-        double velInt_Lisanti(double v, Astrophysics* astro);
+    double velInt_Lisanti(double v, Astrophysics* astro);
 
 	double velInt_isotropicBinned(double v, Astrophysics* astro);
 	double velInt_forwardBinned(double v, Astrophysics* astro);
@@ -34,7 +35,13 @@
 
 	double Lisanti_f(double v, void* params);
         double Lisanti_norm(void* params);
+		
+		double velInt_polytotal(double v, Astrophysics* astro);
+		
         double polyf(double v, void* params);
+		double polyf_ang(double v, Astrophysics* astro, int k);
+		double polyf_total(double v, void* params);
+		double polyfintegrand_total(double v, void* params);
 
 	double integrator(double v_q, double integrand (double,void*), Astrophysics* astro);
 
