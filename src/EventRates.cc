@@ -209,7 +209,6 @@ double DMRate(double E, void* params)
       //Convert q into fm^-1
       q *= (1e-12/1.97e-7);
 
-
       double v = v_min(E,m_n[i],theory->m_x);
 	  double R1 = expt->frac_n[i]*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*int_factor*astro->velocityIntegral(v, astro);
 	  //Add in the O7 operator - need to check/include interaction factor...

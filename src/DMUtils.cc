@@ -149,9 +149,10 @@ double N_expected(double rate (double,void*), ParamSet parameters)
 
   if (status ==  GSL_EROUND)
   {
-    result = 0;
-    std::cout << "GSL rounding error!" << std::endl;
-    //std::cout << result << std::endl;
+	  //std::cout << result << std::endl;
+    //result = 0;
+    //std::cout << "GSL rounding error! - N_expected in DMUtils.cc" << std::endl;
+    
   }
 
   //Free workspace
@@ -213,7 +214,7 @@ double N_expected(double rate (double,void*), ParamSet parameters, double E1, do
   if (status ==  GSL_EROUND)
   {
     result = 0;
-    std::cout << "GSL rounding error!" << std::endl;
+    std::cout << "GSL rounding error! - N_expected in DMUtils.cc" << std::endl;
   //std::cout << result << std::endl;
   }
 

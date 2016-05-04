@@ -63,208 +63,11 @@ extern "C" { void dsinterface_nevents2_( double*, double*, double*, double*, dou
 
 double geteventnumbers(double * params, int* num_hard, double *Ne)
 {
-  double loglike = 0;
-
-  static int count = 0;
-
-  //static std::vector<Detector> experiments;
-
-
-
-  Astrophysics astro; //NEED TO WORRY ABOUT STATIC-NESS
-  Particlephysics theory;
-
-  //Initialise and load in data on first run
-  if (count == 0)
-  {
-    //Load in general parameters
-    load_params("params.ini");
-    astro.load_params();
-
-    //Check to make sure SI and/or SD inteactions are being used
-    if ((USE_SI + USE_SD) < 1)
-    {
-	std::cout << "Must specify SI and/or SD interactions in params.ini" << std::endl;
-	exit (EXIT_FAILURE);
-    }
-
-
-    char numstr[21]; // enough to hold all numbers up to 64-bits
-
-      //Load experimental parameters
-    for (int i = 0; i < N_expt; i++)
-    {
-	  sprintf(numstr, "%d", i+1);
-	  experiments.push_back(Detector(expt_folder + "Experiment"+std::string(numstr)+".txt"));
-    }
-
-    count++;
-  }
-
-
-  //Load in 'theory' parameters from input sample
-  theory.m_x = pow(10,params[0]);
-  if (USE_SI)
-  {
-    theory.sigma_SI = pow(10,params[1]);
-
-    if (USE_SD)
-    {
-      theory.sigma_SD = pow(10,params[2]);
-    }
-    else
-    {
-      theory.sigma_SD = 0;
-    }
-  }
-  else
-  {
-    theory.sigma_SI = 0;
-    theory.sigma_SD = pow(10,params[1]);
-  }
-  
-
-  int N_params = *num_hard;
-  int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
-
-  if (N_expt == 1) offset += 6*USE_VARY_FF;
-  if (N_expt == 2) offset += 6*USE_VARY_FF;
-  if (N_expt == 3) offset += 9*USE_VARY_FF;
-
-  //---------------------------------------------------------------------------------------------------
-  //--------Benchmark speed distributions: vmode = 0----------------------------------------------------
-  //---------------------------------------------------------------------------------------------------
-  if (vmode == 0)
-  {
-    //Use parameters from 'dist.txt' file
-    astro.load_params();
-
-  }
-
-  //---------------------------------------------------------------------------------------------------
-  //--------Binned Speed parametrisation: vmode = 1----------------------------------------------------
-  //---------------------------------------------------------------------------------------------------
-  else if ((vmode == 1))
-  {
-    //std::cout << N_params << std::endl;
-      double N_vp = N_params-offset;
-      astro.initialise_bins(N_vp, 0);
-      astro.vel_params[0] = 0;
-      for (int i = 1; i < N_vp; i++)
-      {
-          astro.vel_params[i] = params[i+offset];
-	  //std::cout << astro.vel_params[i] << std::endl;
-
-      }
-
-      //Exit if bins cannot be normalised
-      if (astro.normalise_bins() == -1) return 1e30;
-
-      astro.rescale_bins(0);
-      astro.velocityIntegral = &velInt_isotropicBinned;
-  }
-
-  //---------------------------------------------------------------------------------------------------
-  //--------Binned momentum parametrisation: vmode = 2--------------------------------------------------
-  //---------------------------------------------------------------------------------------------------
-  else if (vmode == 2)
-  {
-
-      std::cout << "Momentum binned is not currently supported!" << std::endl;
-      exit (EXIT_FAILURE);
-  }
-  //---------------------------------------------------------------------------------------------------
-  //--------Poly-Exp parametrisation: vmode = 3--------------------------------------------------------
-  //---------------------------------------------------------------------------------------------------
-  else if ((vmode == 3))
-  {
-
-    //N_params++;
-    //int N_vp = N_params - offset - 1;
-	int N_vp = N_terms + 1;
-	astro.initialise_terms(N_vp, 1);
-    //astro.vel_params[0] = 0;
-	for (int i = 0; i < N_ang; i++)
-	{
-		astro.vel_params_ang[i][0] = 0;
-	    for (int j = 1; j < N_vp; j++)
-	    {
-	          astro.vel_params_ang[i][j] = params[j + i*N_terms + offset];
-	    }
-	}
-	//HERE - sort out normalisation!
-    astro.normalise_terms(1);
 	
-	//Here now!
-    astro.velocityIntegral = &velInt_isotropicPoly;
-   }
-  
-  else if ((vmode == 4))
-    {
-      int N_vp = 1000;
-      astro.initialise_bins(N_vp, 0);
-      //astro.vel_params[0] = 0;
-      for (int i = 0; i < N_vp; i++)
-	{
-          astro.vel_params[i] = params[i+offset+1];
-	  //std::cout << astro.vel_params[i] << std::endl;
-	}
-      //std::cout << std::endl;
-
-      //Exit if bins cannot be normalised
-      //if (astro.normalise_bins() == -1) return 1e30;
-
-      //astro.rescale_bins(DIR);
-      astro.velocityIntegral = &velInt_isotropicBinned;
-    }
-  
-
-  //Load in BG values for each experiment
-  if (USE_FLOAT_BG)
-    {
-      for (int i = 0; i < N_expt; i++)
-	{
-	  experiments[i].BG_level = pow(10,params[1+USE_SD+USE_SI+i]);
-	  //std::cout << experiments[i].BG_level << "\t";
-	}
-      //std::cout << std::endl;
-    }
-
-
-  //Load in Form Factor parameters for each experiment - only using S_00 at the moment...
-  if (USE_VARY_FF)
-  {
-    for (int k = 0; k < 2; k++)
-    {
-
-     experiments[0].N[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 1];
-     experiments[0].alpha[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 2];
-     experiments[0].beta[2*k] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*k + 3];
-    }
-
-    experiments[2].N[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 1];
-    experiments[2].alpha[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 2];
-    experiments[2].beta[0] = params[USE_SD+USE_SI + N_expt*USE_FLOAT_BG + 3*2 + 3];
-
-
-  }
-
-
-  for (int i = 0; i < N_expt; i++)
-  {
-    ParamSet parameters(&(experiments[i]),&theory, &astro);
-    Ne[i] = (experiments[i].m_det)*(experiments[i].exposure)*N_expected(&DMRate, parameters);
-  }
-
- 
-
-  //Ne[3] = dsinterface_nevents2_(&(theory.m_x), &(theory.sigma_SI), &(theory.sigma_SD)
-
-  //mchi, sigmaSI, sigmaSD, VelParams, N_vp, vmode, Ne
-
-  return 0;
+	
+	
+	
 }
-
 
 //-----------------------------------------------------------------------------
 
@@ -275,8 +78,8 @@ double loglikelihood(double * params, int* num_hard, double *result)
   double loglike = 0;
 
   static int count = 0;
-  static int runcount = 0;
-  std::cout << runcount++ << std::endl;
+
+  
   static std::vector<Detector> experiments;
 
 
@@ -327,6 +130,12 @@ double loglikelihood(double * params, int* num_hard, double *result)
     count++;
   }
 
+  /*
+  static int runcount = 0;
+  std::cout << runcount << std::endl;
+  //if (runcount == 1) exit(0);
+  runcount++;	
+  */
 
   //Load in 'theory' parameters from input sample
   theory.m_x = pow(10,params[0]);
@@ -408,29 +217,146 @@ double loglikelihood(double * params, int* num_hard, double *result)
       std::cout << "Momentum binned is not currently supported!" << std::endl;
       exit (EXIT_FAILURE);
   }
-  //---------------------------------------------------------------------------------------------------
-  //--------Poly-Exp parametrisation: vmode = 3--------------------------------------------------------
-  //---------------------------------------------------------------------------------------------------
+  
+  //---------------------------------------------------------------------
+  //--------Poly-Exp parametrisation: vmode = 3--------------------------      
+  //---------------------------------------------------------------------
   else if ((vmode == 3))
   {
 
     //N_params++;
     //int N_vp = N_params - offset - 1;
-	int N_vp = N_terms + 1;
+	int N_vp = N_terms;
 	astro.initialise_terms(N_vp, 1);
     //astro.vel_params[0] = 0;
-	for (int i = 0; i < N_ang; i++)
+	//astro.vel_params_ang[0][0] = 0;
+	/*
+	for (int j = 1; j < N_vp; j++)
 	{
-		astro.vel_params_ang[i][0] = 0;
-	    for (int j = 1; j < N_vp; j++)
+			astro.vel_params_ang[0][j] = params[j + offset];
+		
+		}
+	*/
+	for (int k = 0; k < N_ang; k++)
+	{
+		astro.vel_params_ang[k][0] = 0;
+	    double a0 = 0;
+		for (int j = 1; j < N_vp; j++)
 	    {
-	          astro.vel_params_ang[i][j] = params[j + i*N_terms + offset];
+			  //astro.vel_params_ang[k][j] = params[j + k*(N_vp) + offset];
+			astro.vel_params_ang[k][j] = params[j + k*(N_vp-1) + offset];
+			a0 -= (astro.vel_params_ang[k][j])*pow(-1.0, j);
 	    }
+		astro.vel_params_ang[k][0] = a0;
 	}
-	//std::cout << "Got to here!" << std::endl;
+	
+	/*
+	for (int k = 0; k < N_ang; k++)
+	{
+		std::cout << " k = " << k << std::endl;
+		for (int i = 0; i < N_vp; i++)
+		{
+			std::cout << "     i = " << i << ": " << astro.vel_params_ang[k][i] << std::endl;		
+		}	
+	}
+	std::cout << std::endl;
+	*/
+	
 	//HERE - sort out normalisation!
-    astro.normalise_terms(1);
-    astro.velocityIntegral = &velInt_polytotal;
+	
+	double *angnorms = new double[N_ang];
+	
+    astro.normalise_terms(1, angnorms);
+	
+	for (int k = 0; k < N_ang; k++)
+	{
+		params[offset + (N_vp-1)*N_ang + k + 1] = angnorms[k];
+	}
+	
+	delete[] angnorms;
+	
+	//std::cout << astro.vel_params_ang[0][0] << std::endl;
+	//std::cout << astro.vel_params_ang[1][0] << std::endl;
+    //Declare gsl workspace (1000 subintervals)
+    gsl_integration_workspace * workspace
+           = gsl_integration_workspace_alloc (5000);
+    //switch off default error handler, store old error handler in
+    //old_handler
+    gsl_error_handler_t * old_handler=gsl_set_error_handler_off();
+
+    //Declare gsl function to be integrated
+    gsl_function F;
+
+    double result, tempres, error;
+    int status;
+	
+	//auto fj = [=] (double v, void* params){ return fintegrand(v, params, vmin, j);};
+
+	//Need to pass something through paramvals...
+
+	//F.params = &params;
+    F.function = &polyf_angint;
+
+	double v1, v2;
+	
+	
+	int N_bins = 1000;
+	double dv = 1000.0/N_bins;
+	astro.N_vp = N_bins;
+	
+	double *vpars = new double[N_terms];
+	
+	std::vector<double> binvals;
+	astro.bin_params.clear();
+	for (int k = 0; k < N_ang; k++)
+	{
+		binvals.clear();
+		for (int j = 0; j < N_terms; j++)
+		{
+			vpars[j] = astro.vel_params_ang[k][j];
+		}
+		for (int vi = 0; vi < N_bins; vi++)
+		{
+			result = 0;
+			v1 = vi*dv;
+			v2 = (vi+1)*dv;
+			F.params = vpars;
+	    	status = gsl_integration_qag(&F,v1,v2, 0, 1e-6, 5000,4,
+					workspace, &result, &error);
+			if (status ==  GSL_EROUND)
+			{
+				std::cout << " Rounding error in bin calculation..." << std::endl;
+				
+			}
+			binvals.push_back(result/dv);
+		}
+		astro.bin_params.push_back(binvals);
+	}
+	
+	
+	
+	delete[] vpars;
+	astro.initialise_bins(N_bins, 0);
+	
+    //astro.velocityIntegral = &velInt_polytotal;
+	astro.velocityIntegral = &velInt_dirBinned;
+	
+	double sumtotal = 0;
+	
+		/*
+		std::cout << " Values of bin parameters..." << std::endl;
+		for (int k = 0; k < N_ang; k++)
+		{
+			std::cout << " k = " << k << std::endl;
+			for (int i = 0; i < N_bins; i++)
+			{
+				sumtotal += astro.bin_params[k][i];
+				std::cout << "\t" << astro.bin_params[k][i] << std::endl;
+			}
+		
+		}
+		*/
+
    }
   
   else if ((vmode == 4))
@@ -906,10 +832,17 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 		if ((vmode != 3)||(dir == 0))
 		{
 			int No = expt->data.size();
+			//Also - maybe I'll use the approximate velocity integral here too!
+			//Reset the proper velocity integral...
+			if (vmode == 3) 
+			{
+				//astro->velocityIntegral = &velInt_polytotal;
+				astro->velocityIntegral = &velInt_dirBinned;
+				parameters.astroParams = astro;
+			}
 			
 		    //Calculate expected numbers of events
 		    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
-		
 		    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
 	        double Ne_nu = 1e-10;
 			if (INCLUDE_NU) Ne_nu = (expt->m_det)*(expt->exposure)*N_expected(&NeutrinoRate, parameters);
@@ -967,16 +900,21 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 		}
 		else if ((vmode == 3)&&(dir == 1))
 		{
+			PL = 0;
 			for (int j = 0; j < N_ang; j++)
 			{
 				//std::cout << j << std::endl;
 				int No = expt->data_ang[j].size();
 			
-			    astro->velocityIntegral = &velInt_DRT;
+			    astro->velocityIntegral = &velInt_DRT_disc;
+				//astro->velocityIntegral = &velInt_DRT;
 				j_bin = j;
 				parameters.astroParams = astro;
 			    //Calculate expected numbers of events
 			    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
+		
+		
+				//std::cout << " j = " << j << ": No = " << No << " ; Ne = " << Ne << std::endl;
 		
 			    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
 		        double Ne_nu = 1e-10;
@@ -990,7 +928,7 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 
 				//std::cout <<  theory->m_x << "\t" << theory->sigma_SI << "\t" << Ne << "\t" << No << "\t" << std::endl;
 
-			    PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
+			    PL += +Ne_tot - No*log(Ne_tot) + logfactNo(No);
 				//std::cout << Ne_tot << std::endl;
 			    //Calculate the event-by-event part
 			    double eventLike = 0;
@@ -1013,6 +951,7 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 					  PL -= log(eventLike);
 			      }
 		  	}
+			//std::cout << std::endl;
 			
 			
 		}

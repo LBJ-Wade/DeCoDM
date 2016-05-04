@@ -207,12 +207,13 @@ void Detector::bin_data()
 //--------------------------------------------
 void Detector::angular_bin_data(int N_ang_bins)
 {
+	std::cout << " Binning angular data..." << std::endl;
 	std::vector<Event> data1;
 	for (int i = 0; i < N_ang_bins; i++)
 	{
 		data1.clear();
-		double theta1 = PI*(i - 1.0)/N_ang_bins;
-		double theta2 = PI*(i)*1.0/N_ang_bins;
+		double theta1 = PI*(i)/N_ang_bins;
+		double theta2 = PI*(i+1)*1.0/N_ang_bins;
 		for (int j = 0; j < data.size(); j++)
 		{
 			if ((data[j].theta > theta1)&&(data[j].theta < theta2))
@@ -220,8 +221,11 @@ void Detector::angular_bin_data(int N_ang_bins)
 				data1.push_back(data[j]);
 			}	
 		}
+		std::cout << "\t k = " << (i+1) << ": " << data1.size() << " events" << std::endl;
 		data_ang.push_back(data1);
 	}
+	std::cout << " Finished binning angular data..." << std::endl;
+
 	
 }
 

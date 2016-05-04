@@ -210,6 +210,18 @@ double velInt_isotropicBinned(double v, Astrophysics* astro)
     return vel_integral;
 }
 
+double velInt_dirBinned(double v, Astrophysics* astro)
+{
+	//std::cout << "Got into the vel integral..." << std::endl;
+	double vel_integral = 0;
+	for (int k = 0 ; k < N_ang; k++)
+	{
+		//std::cout << astro->N_vp << std::endl;
+		vel_integral += (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*f0_binned(v,astro->bin_params[k],astro->bin_edges, astro->N_vp);
+	}
+    return 2*PI*vel_integral;
+}
+
 double velInt_forwardBinned(double v, Astrophysics* astro)
 {
   //Calculate forward rate
@@ -568,6 +580,23 @@ double polyf(double v, void* params)
   return v*v*exp(logf);
 }
 
+double polyf_angint(double v, void* params)
+{
+	double* vparams = ((double*)params);
+    double alpha = (v/v_max);
+
+    double logf = 0;
+
+    for (int i = 0; i < N_terms; i++)
+    {
+		//std::cout << vparams[i] << std::endl;
+  	  //Change to Chebyshev Polynomials!
+     logf -= ChebyshevP(i,2*alpha-1)*vparams[i];
+     //logf -= gsl_sf_legendre_Pl(i,2*alpha-1)*astro->vel_params[i];
+    }
+    return exp(logf);	
+}
+
 
 //Need to fix this - different normalisation!!!
 double polyf_ang(double v, Astrophysics* astro, int k)
@@ -600,11 +629,28 @@ double polyf_total(double v, void* params)
 		{
 		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
 		}
-		f += exp(logf);
+		f += (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
 	}
-    return v*v*f;	
+    return 2*PI*v*v*f;	
+}
+
+double polyf_angnorm(double v, void* params)
+{
+    Astrophysics* astro = ((Astrophysics*)params);
+    double alpha = (v/v_max);
+
+    double logf = 0;
+	double f = 0;
 	
+	int k = j_bin;
 	
+		for (int i = 0; i < astro->N_vp; i++)
+		{
+		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
+		}
+		f += (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
+		
+    return 2*PI*v*v*f;	
 }
 
 double polyfintegrand_total(double v, void* params)
@@ -622,7 +668,7 @@ double polyfintegrand_total(double v, void* params)
 		{
 		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
 		}
-		f += exp(logf);
+		f += (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
 	}
     return v*f;	
 	
