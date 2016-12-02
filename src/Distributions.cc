@@ -629,7 +629,8 @@ double polyf_total(double v, void* params)
 		{
 		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
 		}
-		f += (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
+		
+		f = (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
 	}
     return 2*PI*v*v*f;	
 }
@@ -648,7 +649,9 @@ double polyf_angnorm(double v, void* params)
 		{
 		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
 		}
-		f += (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
+		//f = (1.0/3.0)*exp(logf);
+		//std::cout << k << "\t" << (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)) << std::endl;
+		f = (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
 		
     return 2*PI*v*v*f;	
 }

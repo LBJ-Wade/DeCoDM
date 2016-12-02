@@ -315,6 +315,7 @@ double Astrophysics::normalise_terms(int dir, double* norms)
 	  {
 		  //vel_params_ang[k][0] += log(N_ang*norm*(cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)));
 		  norms[k] = norms[k]/totalnorm;
+		  //vel_params_ang[k][0] += log(2*totalnorm*(cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)));
 		  vel_params_ang[k][0] += log(totalnorm);
 	  }
 	  

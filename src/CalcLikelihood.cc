@@ -300,7 +300,7 @@ double loglikelihood(double * params, int* num_hard, double *result)
 	double v1, v2;
 	
 	
-	int N_bins = 1000;
+	int N_bins = 100;
 	double dv = 1000.0/N_bins;
 	astro.N_vp = N_bins;
 	
@@ -455,7 +455,9 @@ double loglikelihood(double * params, int* num_hard, double *result)
   }
 
   
-  
+  //This is where I'm quiting MARK123
+  std::cout << " Likelihood = " << loglike << std::endl;
+  exit(0);
   *result = loglike;
   double LL = 1.0*loglike;
   return LL;
@@ -914,7 +916,24 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 			    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 		
 		
-				//std::cout << " j = " << j << ": No = " << No << " ; Ne = " << Ne << std::endl;
+				std::cout << " j = " << j << ": No = " << No << " ; Ne = " << Ne << std::endl;
+		
+				
+			    char numstr[3]; // enough to hold all numbers up to 64-bits
+				sprintf(numstr, "%d", j);
+		
+				//-----Print out velocity integral
+				std::ofstream outfile;
+				std::string filename("IRT"+std::string(numstr)+".txt");
+				outfile.open(filename.c_str());
+			
+				for (int iv = 0; iv < 1000; iv++)
+				{
+					double v = iv*1.0;
+					outfile << v << "\t" << astro->velocityIntegral(v, astro) << "\n";
+				}	
+				outfile.close();
+				
 		
 			    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
 		        double Ne_nu = 1e-10;
@@ -934,10 +953,8 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 			    double eventLike = 0;
 			    for (int i = 0; i < No; i++)
 			    {
-
 					  eventLike = 0;
 
-			  
 					  setCurrentRate(&DMRate);
 					  eventLike = (expt->exposure)*(expt->m_det)*DMRate(expt->data_ang[j][i].energy,&parameters)/Ne_tot;
 		  
@@ -951,9 +968,7 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 					  PL -= log(eventLike);
 			      }
 		  	}
-			//std::cout << std::endl;
-			
-			
+			//std::cout << std::endl;	
 		}
 	  }
   return PL;

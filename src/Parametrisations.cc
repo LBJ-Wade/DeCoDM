@@ -495,16 +495,20 @@ double velInt_DRT(double vmin,  Astrophysics* astro)
 
 double velInt_DRT_disc(double vmin,  Astrophysics* astro)
 {
+	
+	
 	static int count = 0;
     if (count == 0)
 	{
+		int tempj = j_bin;
 		//std::cout << " Edit: MARK-123" << std::endl;
 		std::cout << " Note: I've changed the normalisation to be 3 separate evals..." << std::endl;
 		std::cout << " Check that Nvbins matches that in CalcLikelihood.cc" << std::endl;
-		Nvbins = 1000;
+		Nvbins = 100;
 		dv = 1000.0/Nvbins;
 		calcApproxMatrix();
 		count++;
+		j_bin = tempj;
 	}
 
 	double fudge = 1.0;
@@ -520,6 +524,10 @@ double velInt_DRT_disc(double vmin,  Astrophysics* astro)
 		//for (int vi = vqi; vi < Nvbins; vi++)
 		for (int vi = 0; vi < Nvbins; vi++)
 		{
+			if (k == 1)
+			{
+				fudge = 1.0;
+			}
 			//Could replace polyf_ang with an integrated version...
 			//I should probably do that...
 			//Linear interpolation...?
