@@ -237,18 +237,29 @@ double loglikelihood(double * params, int* num_hard, double *result)
 		
 		}
 	*/
-	for (int k = 0; k < N_ang; k++)
+	
+	//Fudge for folded
+	for (int k = 0; k < N_ang-1; k++)
 	{
 		astro.vel_params_ang[k][0] = 0;
-	    double a0 = 0;
+		double a0 = 0;
 		for (int j = 1; j < N_vp; j++)
 	    {
 			  //astro.vel_params_ang[k][j] = params[j + k*(N_vp) + offset];
 			astro.vel_params_ang[k][j] = params[j + k*(N_vp-1) + offset];
+			//This is where I fix the values at v = 0
 			a0 -= (astro.vel_params_ang[k][j])*pow(-1.0, j);
 	    }
 		astro.vel_params_ang[k][0] = a0;
 	}
+	//Fudge for folded
+	astro.vel_params_ang[0][0] -= log(2.0);
+	
+	//Fudge for folded
+	for (int j = 0; j < N_vp; j++)
+	  {                                                     
+	    astro.vel_params_ang[2][j] = astro.vel_params_ang[0][j];	
+	 }
 	
 	/*
 	for (int k = 0; k < N_ang; k++)
@@ -266,11 +277,11 @@ double loglikelihood(double * params, int* num_hard, double *result)
 	
 	double *angnorms = new double[N_ang];
 	
-    astro.normalise_terms(1, angnorms);
+	astro.normalise_terms(1, angnorms);
 	
 	for (int k = 0; k < N_ang; k++)
 	{
-		params[offset + (N_vp-1)*N_ang + k + 1] = angnorms[k];
+	  params[offset + (N_vp-1)*(N_ang) + k + 1] = angnorms[k];
 	}
 	
 	delete[] angnorms;
@@ -300,7 +311,7 @@ double loglikelihood(double * params, int* num_hard, double *result)
 	double v1, v2;
 	
 	
-	int N_bins = 1000;
+	int N_bins = 100;
 	double dv = 1000.0/N_bins;
 	astro.N_vp = N_bins;
 	
@@ -901,7 +912,8 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 		else if ((vmode == 3)&&(dir == 1))
 		{
 			PL = 0;
-			for (int j = 0; j < N_ang; j++)
+			//Fudge for folded
+			for (int j = 0; j < N_ang-1; j++)
 			{
 				//std::cout << j << std::endl;
 				int No = expt->data_ang[j].size();
@@ -914,7 +926,7 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 			    double Ne = (expt->m_det)*(expt->exposure)*N_expected(&DMRate, parameters);
 		
 		
-				//std::cout << " j = " << j << ": No = " << No << " ; Ne = " << Ne << std::endl;
+			    //std::cout << " j = " << j << ": No = " << No << " ; Ne = " << Ne << std::endl;
 		
 			    double Ne_BG = (expt->m_det)*(expt->exposure)*N_expected(&BGRate, parameters);
 		        double Ne_nu = 1e-10;

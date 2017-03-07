@@ -648,8 +648,11 @@ double polyf_angnorm(double v, void* params)
 		{
 		 logf -= ChebyshevP(i,2*alpha-1)*astro->vel_params_ang[k][i];
 		}
-		f += (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
-		
+		//This is the fudge bit that I've removed!!!
+		f = (cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang))*exp(logf);
+		//f = (1.0/3.0)*exp(logf);
+
+		//I've removed a factor of 2pi here from the normalisation...
     return 2*PI*v*v*f;	
 }
 

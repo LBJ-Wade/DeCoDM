@@ -292,29 +292,41 @@ double Astrophysics::normalise_terms(int dir, double* norms)
       int status;
 	  
 	  double totalnorm = 0;	
-		
+	  double totalnorm2 = 0;
       F.function = &polyf_angnorm;
       F.params = this;
 
+      
+      double fudge = 1.0;
 	  for (int k = 0; k < N_ang; k++)
 	  {
+
+	    double v_cut = 0;
 		 norm = 0;
 		j_bin = k;
 	  	status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm, &error);
+		status = gsl_integration_qag(&F,v_cut,1000, 0, 1e-6, 3000, 6, workspace, &norm2, &error);
         if (status ==  GSL_EROUND)
         {
   	    std::cout << "GSL rounding error!" << std::endl;
   	    std::cout << norm << std::endl;
         }
-		norms[k] = norm;
-		totalnorm += norm;
+	
+	fudge = 1.0;
+
+	//Fudged for folded...
+	if (k == 0) fudge = 1.0;
+	if (k == 2) fudge = 0.0;
+	norms[k] = fudge*norm2;
+                totalnorm2 += fudge*norm2;
+		totalnorm += fudge*norm;
 	  }
 	  
 	  //This is a strangely fixed normalisation!
 	  for (int k = 0; k < N_ang; k++)
 	  {
 		  //vel_params_ang[k][0] += log(N_ang*norm*(cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)));
-		  norms[k] = norms[k]/totalnorm;
+		  norms[k] = norms[k]/totalnorm2;
 		  vel_params_ang[k][0] += log(totalnorm);
 	  }
 	  

@@ -501,13 +501,13 @@ double velInt_DRT_disc(double vmin,  Astrophysics* astro)
 		//std::cout << " Edit: MARK-123" << std::endl;
 		std::cout << " Note: I've changed the normalisation to be 3 separate evals..." << std::endl;
 		std::cout << " Check that Nvbins matches that in CalcLikelihood.cc" << std::endl;
-		Nvbins = 1000;
+		Nvbins = 100;
 		dv = 1000.0/Nvbins;
 		calcApproxMatrix();
 		count++;
 	}
 
-	double fudge = 1.0;
+	
 	int vqi = floor(vmin/dv);
 	//std::cout << vmin << "\t" << vqi << std::endl;
 	if (vqi >= (Nvbins - 1)) return 0;
@@ -515,11 +515,23 @@ double velInt_DRT_disc(double vmin,  Astrophysics* astro)
 	double result = 0;
 	for (int k = 0; k < N_ang; k++)
 	{
-		int jkind = N_ang*j_bin + k;
+	  double fudge = 1.0;
+	  //This is a fudge to check things...
+	  if (j_bin == 0)
+	    {
+	      if (k == 1) fudge = 2.0;
+	    }
+	  if (j_bin == 1)
+	    {
+	      if (k == 2) fudge = 0.0;
+	    }
+
 		//std::cout << jkind << std::endl;
 		//for (int vi = vqi; vi < Nvbins; vi++)
 		for (int vi = 0; vi < Nvbins; vi++)
 		{
+		  int jbin_temp = j_bin;
+		  int jkind = N_ang*j_bin + k;
 			//Could replace polyf_ang with an integrated version...
 			//I should probably do that...
 			//Linear interpolation...?
@@ -527,7 +539,16 @@ double velInt_DRT_disc(double vmin,  Astrophysics* astro)
 			//Check this linear interpolation...
 			//if (j_bin == 1) fudge = 0;
 			result += fudge*(velInt_disc[jkind][vi][vqi] + (velInt_disc[jkind][vi][vqi+1] - velInt_disc[jkind][vi][vqi])*(vmin/dv - vqi))*astro->bin_params[k][vi];
-			//result += velInt_disc[jkind][vi][vqi]*astro->bin_params[k][vi];
+			
+			//Fudge for folded - do I need to evenly split between forward and backward bins?
+			if (j_bin == -700)
+			  {
+			    j_bin = 2;
+			    jkind = N_ang*j_bin + k;
+			    result += fudge*(velInt_disc[jkind][vi][vqi] + (velInt_disc[jkind][vi][vqi+1] - velInt_disc[jkind][vi][vqi])*(vmin/dv - vqi))*astro->bin_params[k][vi];
+			    j_bin = jbin_temp;
+			  }
+//result += velInt_disc[jkind][vi][vqi]*astro->bin_params[k][vi];
 		}		
 	}
 	return result;

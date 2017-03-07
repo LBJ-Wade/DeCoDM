@@ -1,5 +1,5 @@
 #include <iostream>
-#include <Particlephysics_class.h>
+#include <Particlephysics_Class.h>
 
 void Particlephysics::PrintAll()
 {

@@ -224,6 +224,19 @@ void Detector::angular_bin_data(int N_ang_bins)
 		std::cout << "\t k = " << (i+1) << ": " << data1.size() << " events" << std::endl;
 		data_ang.push_back(data1);
 	}
+	//Fudge for folding
+	std::cout << " Folding the data..." << std::endl;
+	for (int k = 0; k < data_ang[2].size(); k++)
+	  {
+	    data_ang[0].push_back(data_ang[2][k]);
+	  }
+	//Get ride of events from the backward bin
+	data_ang[2].clear();
+        for (int i = 0; i < N_ang_bins; i++)
+	  {
+	    std::cout << "\t k = " << (i+1) << ": " << data_ang[i].size() << " events" << std::endl;
+	  }
+
 	std::cout << " Finished binning angular data..." << std::endl;
 
 	
