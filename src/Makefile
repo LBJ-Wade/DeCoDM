@@ -120,7 +120,7 @@ GenerateEvents: $(OBJ_FILES)
 	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o GenerateEvents $^ GenerateEvents_main.cc $(LD_FLAGS)
 	cp GenerateEvents $(TARGET_GENERATE)
 	cp GenerateEvents $(TARGET_TEST)
-	cp GenerateEvents /Users/bradkav/Projects/DirectionalDetailed/DirFit
+	cp GenerateEvents /Users/bradkav/Projects/Antiparticle/WIMPfit
 	rm GenerateEvents
 
 GenerateEvents_IC: $(OBJ_FILES)

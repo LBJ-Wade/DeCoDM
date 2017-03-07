@@ -80,7 +80,7 @@ static gsl_rng * r;
 
 
 
- void generateAllEvents(double m_x, double sigma_SI, double sigma_SD)
+ void generateAllEvents(Particlephysics* ptheory)
  {
      for (int i = 0; i < N_expt; i++)
      {
@@ -94,7 +94,7 @@ static gsl_rng * r;
 	         std::cout << "*********************************************" << std::endl;
 	         experiments[i].displayParameters();	
 		 }
-         generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
+         generateEvents(&(experiments[i]), ptheory);
 	 }
  }
  
@@ -121,7 +121,7 @@ static gsl_rng * r;
 
 //--------Function Definitions-----------
 
-void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD)
+void generateEvents(Detector* expt, Particlephysics* ptheory)
 {
 	//std::cout << "This code can be rewritten for generic rates (i.e. a 'generate' dataset code and then you just set which eventrate you want to use...) - 07/11/2014" << std::endl;
 	
@@ -137,18 +137,73 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
   Astrophysics astro;
 
-
   astro.load_params();
   //std::cout << "Astro:\t" << astro.v_lag[0] << "\t" << astro.v_rms[0] << "\t" << astro.rho_x << std::endl;
   //std::cout << "Astro:\t" << astro.dist_type << std::endl;
-  Particlephysics theory;
-  theory.m_x = m_x;
-  theory.sigma_SI = sigma_SI;
-  theory.sigma_SD = sigma_SD;
+  //Particlephysics theory;
+  //theory.m_x = m_x;
+  //theory.sigma_SI = sigma_SI;
+  //theory.sigma_SD = sigma_SD;
 
-  ParamSet parameters(expt,&theory, &astro);
+  ParamSet parameters(expt,ptheory, &astro);
+ 
+  //Need to divide through by sum over frac_n[i] A^2
   
+  //There's a slight change in here - need to include 
+  //factors of mu_{\chi N}^2 - they don't *quite* cancel...
+  
+  //Calculating the effective DM-proton coupling
+  double sigp = 0;
+  double nA = 0;
+  for (int i = 0; i < expt->N_isotopes; i++)
+  {
+	  nA += expt->frac_n[i]*pow(expt->N_p[i] + expt->N_n[i],2.0);
+	  sigp += expt->frac_n[i]*pow(reduced_m_GeV(1.0, ptheory->m_x),2.0)*(pow(ptheory->lambda_p_D*expt->N_p[i] + ptheory->lambda_n_D*expt->N_n[i],2.0)
+			  + pow(ptheory->lambda_p_Dbar*expt->N_p[i] + ptheory->lambda_n_Dbar*expt->N_n[i],2.0));
+  }
+  sigp *= (2.0/PI)*(1.973e-14*1.973e-14)/nA;
+  
+  //std::cout << sigp << std::endl;
+  //std::cout << ptheory->lambda_p_D << std::endl;
+  //std::ofstream outfile;
 
+   //outfile.open("norms.txt", std::ios_base::app);
+   //outfile << sigp << std::endl; 
+  //  outfile.close();
+ 
+  //BJK!!!
+  //This should only be used for m_x = 50 or m_x = 1000
+  double xsec_target
+  if (ptheory->m_x < 100)
+  {
+	  xsec_target = 1e-46;
+  }
+  else if (ptheory->m_x > 100)
+  {
+	  xsec_target = 1e-45;
+  }
+  
+  if (expt->m_n[0] > 120)
+  //if ((expt->m_n[0] < 45)&&(expt->m_n[0] > 38))
+  {
+	  ptheory->lambda_p_D *= sqrt(xsec_target/sigp);
+	  ptheory->lambda_n_D *= sqrt(xsec_target/sigp);
+	  ptheory->lambda_p_Dbar *= sqrt(xsec_target/sigp);
+	  ptheory->lambda_n_Dbar *= sqrt(xsec_target/sigp);
+	  
+	  	sigp = 0;
+	    for (int i = 0; i < expt->N_isotopes; i++)
+	    {
+	  	  sigp += expt->frac_n[i]*pow(reduced_m_GeV(1.0, ptheory->m_x),2.0)*(pow(ptheory->lambda_p_D*expt->N_p[i] + ptheory->lambda_n_D*expt->N_n[i],2.0)
+	  			  + pow(ptheory->lambda_p_Dbar*expt->N_p[i] + ptheory->lambda_n_Dbar*expt->N_n[i],2.0));
+	    }
+	    sigp *= (2.0/PI)*(1.973e-14*1.973e-14)/nA;
+	  
+  }
+  
+  //sigp = 1e-46;
+  
+  std::cout << "   Effective DM-proton cross section: " << sigp << " cm^2..."<<std::endl;
   
   double scaling = 1;
   if (astro.dist_type == "lisanti")
@@ -158,9 +213,21 @@ void generateEvents(Detector* expt, double m_x, double sigma_SI, double sigma_SD
 
     //Generate ordinary events
     Ne = scaling*expt->m_det*expt->exposure*(N_expected(&DMRate, parameters));
+	
+	/*
+	std::ofstream outfile;
+
+	outfile.open("Ne.txt", std::ios_base::app);
+	outfile << Ne << "\t"; 
+	if (expt->m_n[0] < 30) outfile << std::endl;
+	outfile.close();
+	*/
+	
     int No = gsl_ran_poisson(r,Ne);
-    //std::cout << Ne << "\t" << No << std::endl;
-    setCurrentRate(&DMRate);
+	//std::cout << "Warning! Rounding to nearest value!..."<<std::endl;
+	//int No = round(Ne);
+    
+	setCurrentRate(&DMRate);
 
     //Initialise rotation matrix
     double rot_matrix[9];
@@ -305,8 +372,10 @@ double calcNe_NR(Detector* expt, double m_x, int op1, int op2, int N1, int N2)
        scaling = 1.0/(Lisanti_norm(&astro));
     }
 
-    //Generate ordinary events
-    double Ne_S = scaling*expt->m_det*expt->exposure*(N_expected(&DMRateNR, parameters));
+
+
+   //Generate ordinary events
+   double Ne_S = scaling*expt->m_det*expt->exposure*(N_expected(&DMRateNR, parameters));
 
 	return Ne_S;
 }

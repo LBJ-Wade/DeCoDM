@@ -129,6 +129,8 @@ double DMRateNR(double E, void* params)
 	  double Eta = astro->velocityIntegral(v, astro);
 	  double MEta = astro->modifiedVelocityIntegral(v, astro);
 	  
+	  //Currently using the Fitzpatrick et al normalisation...
+	  
 	  if (op1 == op2)
 	  {
 		  switch (op1) 
@@ -138,8 +140,8 @@ double DMRateNR(double E, void* params)
 				  break;
 			  case 3:
 			  	  A = MEta*expt->F_Sigma1(E, i, i_c);
-			      B = 2.0*pow((q/amu),2.0)*Eta*expt->F_Phi2(E, i, i_c);
-			      rate1 = pow((q/amu),2.0)*(A+B)/8.0;
+			      B = 0.25*pow((q/amu),2.0)*Eta*expt->F_Phi2(E, i, i_c);
+			      rate1 = pow((q*1e-6),2.0)*(A+B);
 				  break;
 			  case 4:
 			  	  //Use the correct values here...Check the normalisation/scaling...
@@ -149,10 +151,10 @@ double DMRateNR(double E, void* params)
 			  case 5:
 			  	  A = MEta*expt->F_M(E, i, i_c);
 			      B = Eta*pow((q/amu),2.0)*expt->F_Delta(E, i, i_c);
-			      rate1 = pow((q/amu),2.0)*(A + B)/4.0;
+			      rate1 = pow((q*1e-6),2.0)*(A + B)/4.0;
 				  break;
 			  case 6:
-				  rate1 = pow((q/amu),4.0)*Eta*expt->F_Sigma2(E, i, i_c)/16.0;
+				  rate1 = pow((q*1e-6),4.0)*Eta*expt->F_Sigma2(E, i, i_c)/16.0;
 				  break;
 			  case 7:
 				  rate1 = MEta*expt->F_Sigma1(E, i, i_c)/8.0;
@@ -163,24 +165,60 @@ double DMRateNR(double E, void* params)
 				  rate1 = (A + B)/4.0;
 				  break;
 			  case 9:
-				  rate1 = Eta*pow((q/amu),2.0)*expt->F_Sigma1(E, i, i_c)/16.0;
+				  rate1 = Eta*pow((q*1e-6),2.0)*expt->F_Sigma1(E, i, i_c)/16.0;
 				  break;
 			  case 10:
-				  rate1 = Eta*pow((q/amu),2.0)*expt->F_Sigma2(E, i, i_c)/4.0;
+				  rate1 = Eta*pow((q*1e-6),2.0)*expt->F_Sigma2(E, i, i_c)/4.0;
 				  break;
 			  case 11:
-				  rate1 = Eta*pow((q/amu),2.0)*expt->F_M(E, i, i_c)/4.0;
+				  rate1 = Eta*pow((q*1e-6),2.0)*expt->F_M(E, i, i_c)/4.0;
 				  break;
+				  
+			  //Long range interactions
+			  case 101:
+			      rate1 = pow(q*1e-6,-4.0)*expt->F_M(E, i, i_c)*Eta;
+				  break;
+			  case 104:
+				  rate1 = 0;
+				  break;
+			  case 105:
+				  A = MEta*expt->F_M(E, i, i_c);
+			      B = Eta*pow((q/amu),2.0)*expt->F_Delta(E, i, i_c);
+			      rate1 = pow((q*1e-6),-2.0)*(A + B)/4.0;
+				  break;
+			   case 106:
+				  rate1 = Eta*expt->F_Sigma2(E, i, i_c)/16.0;
+				  break;
+   			   case 111:
+			      rate1 = Eta*pow((q*1e-6),-2.0)*expt->F_M(E, i, i_c)/4.0;
+   				  break;  
+				  
 		  }
 	  }
 	  else
 	  {
-		  std::cout << "No interference terms have been included yet!" << std::endl;
+		  if ((op1 == 8 && op2 == 9)||(op1 == 9 && op2 == 8))
+		  {
+		  	rate1 = pow((q*1e-6),2.0)*(1.0/(amu*1e-6))*Eta*expt->F_Sigma1Delta(E, i, i_c)/8.0;	
+		  }
+		  //if (op1 < 100) return 0;
+		  //if (op2 < 100) return 0;
+		  //These are long range only
+		  if ((op1 == 104 && op2 == 105)||(op1 == 105 && op2 == 104))
+		  {
+			  rate1 = -(1.0/(amu*1e-6))*Eta*expt->F_Sigma1Delta(E, i, i_c)/8.0;
+		  }
+		  if ((op1 == 104 && op2 == 106)||(op1 == 106 && op2 == 104))
+		  {
+			  rate1 = Eta*expt->F_Sigma2(E, i, i_c)/16.0;
+		  }
+		  
+		  //std::cout << "No interference terms have been included yet!" << std::endl;
 	  }
 	  total_rate += expt->frac_n[i]*rate1*rate_prefactor(m_n[i], theory->m_x, 1, Astrophysics::rho_x)*conv;
 	  
     }
-	return total_rate;
+	return expt->efficiency(E)*total_rate;
 }
 
 double DMRate(double E, void* params)
@@ -191,6 +229,8 @@ double DMRate(double E, void* params)
 
     std::vector<double> m_n = expt->m_n;
 
+	//theory->PrintAll();
+
     //Note the factor of 0.5;
     double rate = 0;
 
@@ -200,7 +240,16 @@ double DMRate(double E, void* params)
 
       //Currently only isoscalar SD scattering (i.e. 0 rather than 1 in the 'component' field)
       if ((USE_SD)&&(pow(expt->J[i],2) > 1e-6))	int_factor += theory->sigma_SD*(16.0/3.0)*(1.0/16.0)*(expt->F_Sigma1(E, i, 0)+expt->F_Sigma2(E, i, 0));
-	  if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
+	  //if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
+	  if (USE_SI)    
+	  {
+		  double sig = 0;
+		  sig = (1.973e-14*1.973e-14)*4.0*pow(reduced_m_GeV(1.0, theory->m_x),2.0)/PI;
+
+		  int_factor += 0.5*sig*expt->SI_formfactor(E,i)*
+		  (pow(theory->lambda_p_D*expt->N_p[i] + theory->lambda_n_D*expt->N_n[i],2.0)
+			  + pow(theory->lambda_p_Dbar*expt->N_p[i] + theory->lambda_n_Dbar*expt->N_n[i],2.0));
+	  }
 	 
       //Define conversion factor from amu-->keV
       double amu = 931.5*1000;
@@ -266,7 +315,15 @@ double DMRateDirectional(double E, double theta, double phi, void* params)
       //Currently only isoscalar SD scattering (i.e. 0 rather than 1 in the 'component' field)
 
       if ((USE_SD)&&(pow(expt->J[i],2) > 1e-6))	int_factor += theory->sigma_SD*(16.0/3.0)*(1.0/16.0)*(expt->F_Sigma1(E, i, 0)+expt->F_Sigma2(E, i, 0));
-	  if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
+	  //if (USE_SI)    int_factor += theory->sigma_SI*expt->SI_formfactor(E,i)*expt->SI_enhancement(i);
+	  if (USE_SI)    
+	  {
+		  double sig = 0;
+		  sig = (1.973e-14*1.973e-14)*4.0*pow(reduced_m_GeV(1.0, theory->m_x),2.0)/PI;
+		  int_factor += 0.5*sig*expt->SI_formfactor(E,i)*
+		  (pow(theory->lambda_p_D*expt->N_p[i] + theory->lambda_n_D*expt->N_n[i],2.0)
+			  + pow(theory->lambda_p_Dbar*expt->N_p[i] + theory->lambda_n_Dbar*expt->N_n[i],2.0));
+	  }
 
       //Define conversion factor from amu-->keV
       double amu = 931.5*1000;

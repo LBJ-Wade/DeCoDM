@@ -16,25 +16,32 @@
 int main(int argc, char *argv[])
 {
   //Read in command line arguments
-  if (argc != 4)
+  if (argc < 6)
   {
-     std::cout << "Not enough arguments - require: m_x (Gev); sigma_SI (cm^2); sigma_SD (cm^2)" << std::endl;
+     std::cout << "Not enough arguments - require: m_x (Gev); lambda_p^D (GeV^-2); lambda_n^D (GeV^-2); lambda_p^Dbar (GeV^-2); lambda_n^Dbar (GeV^-2);" << std::endl;
     return 0;
   }
 
   //DM mass
   double m_x = atof(argv[1]);
 
-  //DM SI Cross-section
-  double sigma_SI = atof(argv[2]);
+  double N1 = 1.0;
+  //Dirac couplings
+  double lambda_p_D = N1*1e-9*atof(argv[2]);
+  double lambda_p_Dbar = N1*1e-9*atof(argv[3]);
 
-  //DM SD Cross-section
-  double sigma_SD = atof(argv[3]);
+  //Anti-Dirac couplings
+  double lambda_n_D = N1*1e-9*atof(argv[4]);
+  double lambda_n_Dbar = N1*1e-9*atof(argv[5]);
+
+ 
 
   Particlephysics theory;
   theory.m_x = m_x;
-  theory.sigma_SI = sigma_SI;
-  theory.sigma_SD = sigma_SD;
+  theory.lambda_p_D = lambda_p_D;
+  theory.lambda_n_D = lambda_n_D;
+  theory.lambda_p_Dbar = lambda_p_Dbar;
+  theory.lambda_n_Dbar = lambda_n_Dbar;
   theory.PrintAll();
   
   //Load global parameters
@@ -44,7 +51,7 @@ int main(int argc, char *argv[])
 
   loadExperiments();
 
-  generateAllEvents(m_x, sigma_SI, sigma_SD);
+  generateAllEvents(&theory);
   
   printAllData();
 
@@ -53,8 +60,10 @@ int main(int argc, char *argv[])
   if (file.is_open())
     {
       file << "m_x/GeV\t" << m_x << std::endl;
-      file << "sigma_SI/cm^2\t" << sigma_SI << std::endl;
-      file << "sigma_SD/cm^2\t" << sigma_SD << std::endl;
+      file << "lambda_p^D/GeV^-2\t" << lambda_p_D << std::endl;
+      file << "lambda_n^D/GeV^-2\t" << lambda_n_D << std::endl;
+      file << "lambda_p^Dbar/GeV^-2\t" << lambda_p_Dbar << std::endl;
+      file << "lambda_n^Dbar/GeV^-2\t" << lambda_n_Dbar << std::endl;
 
       file.close();
     }

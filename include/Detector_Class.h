@@ -16,6 +16,9 @@ class Detector
     std::vector<int> N_p; //Number of protons
     std::vector<int> N_n; //Number of neutrons
     
+	std::vector<double> eff_E;
+	std::vector<double> eff_eta;
+	
 	std::vector< std::vector<double> > EFTparams; //Parameters for EFT form factors
 	std::vector<int> maxpow; //Max power of y in Form factor expansion
 	

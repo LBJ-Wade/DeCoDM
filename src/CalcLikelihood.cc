@@ -78,10 +78,9 @@ double loglikelihood(double * params, int* num_hard, double *result)
   double loglike = 0;
 
   static int count = 0;
-
+  static int use_dirac = 0;
   
   static std::vector<Detector> experiments;
-
 
 
   Astrophysics astro; //NEED TO WORRY ABOUT STATIC-NESS
@@ -90,6 +89,18 @@ double loglikelihood(double * params, int* num_hard, double *result)
   //Initialise and load in data on first run
   if (count == 0)
   {
+	//Read in (some) the MultiNest sampling parameters
+    std::ifstream pfile("MNparams.txt");
+    if (pfile.is_open())
+    {
+	  use_dirac = read_param_int(&pfile, "USE_DIRAC");
+      pfile.close();
+    }
+    else 
+	{
+	    std::cout << "CalcLikelihood.cc: Unable to open MultiNest parameter file..." << std::endl; 
+		use_dirac = 0;
+	}
 	  //Initialise neutrino tables
 	  //LoadFluxTable();
 	  
@@ -140,6 +151,23 @@ double loglikelihood(double * params, int* num_hard, double *result)
   //Load in 'theory' parameters from input sample
   theory.m_x = pow(10,params[0]);
   //std::cout << theory.m_x << std::endl;
+  theory.lambda_p_D = params[1];
+  theory.lambda_n_D = params[2];
+  
+  if (use_dirac)
+  {  
+	  theory.lambda_p_Dbar = params[3];
+  	  theory.lambda_n_Dbar = params[4];	
+  }
+  else
+  {
+	  //This means we don't have to mess around with factors of 2!
+	 theory.lambda_p_Dbar = params[1];
+	 theory.lambda_n_Dbar = params[2];
+  }
+  
+
+  /*
   if (USE_SI)
   {
     theory.sigma_SI = pow(10,params[1]);
@@ -158,17 +186,19 @@ double loglikelihood(double * params, int* num_hard, double *result)
     theory.sigma_SI = 0;
     theory.sigma_SD = pow(10,params[1]);
   }
+  */
   
   //theory.PrintAll();
 
 
   int N_params = *num_hard;
-  int offset = USE_SI+USE_SD+N_expt*USE_FLOAT_BG;
+  int offset = USE_SI*2*(1+use_dirac) + USE_SD + N_expt*USE_FLOAT_BG;
 
   if (N_expt == 1) offset += 6*USE_VARY_FF;
   if (N_expt == 2) offset += 6*USE_VARY_FF;
   if (N_expt == 3) offset += 9*USE_VARY_FF;
 
+  //std::cout << N_params << std::endl;
   //---------------------------------------------------------------------------------------------------
   //--------Benchmark speed distributions: vmode = 0----------------------------------------------------
   //---------------------------------------------------------------------------------------------------
@@ -176,7 +206,8 @@ double loglikelihood(double * params, int* num_hard, double *result)
   {
     //Use parameters from 'dist.txt' file
     astro.load_params();
-	if (N_params > 2)
+	//Set to N_params > 2 for the standard (m_x, sig) case
+	if (N_params > 5)
 	{
 		astro.v_lag[0] = params[2];
 		astro.v_lag_z[0] = params[2];
@@ -451,13 +482,14 @@ double loglikelihood(double * params, int* num_hard, double *result)
   for (int i = 0; i < N_expt; i++)
   {
     loglike -= likelihood(&(experiments[i]), &theory, &astro, vmode, experiments[i].USE_DIR);
-	//std::cout << theory.m_x << "\t" << theory.sigma_SI << "\t" << loglike << std::endl;
+	//std::cout << theory.m_x << "\t" << theory.lambda_p_D << "\t" << loglike << std::endl;
+	
   }
 
   
   //This is where I'm quiting MARK123
-  std::cout << " Likelihood = " << loglike << std::endl;
-  exit(0);
+  //std::cout << " Likelihood = " << loglike << std::endl;
+  //exit(0);
   *result = loglike;
   double LL = 1.0*loglike;
   return LL;
@@ -568,7 +600,8 @@ double RecalcData(double m_x, double sigma_SI, double sigma_SD)
 	
 	for (int i = 0; i < N_expt; i++)
 	{
-		generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
+		std::cout << "Warning [CalcLikelihood.cc]: 'RecalcData' is not currently working!" << std::endl;
+		//generateEvents(&(experiments[i]), m_x, sigma_SI,sigma_SD);
 	}
 	
 }
@@ -804,8 +837,7 @@ double CalcMixedLike(double m_x, double Ne, double A)
 double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro, int vmode, int dir)
 {
 
-    ParamSet parameters(expt,theory, astro);
-
+    ParamSet parameters(expt, theory, astro);
     
       //Calculate number of expected and observed events
 
@@ -855,11 +887,16 @@ double likelihood(Detector* expt , Particlephysics* theory, Astrophysics* astro,
 		    double f_S = Ne/Ne_tot;
 		    double f_BG = Ne_BG/Ne_tot;
 
-			//std::cout <<  theory->m_x << "\t" << theory->sigma_SI << "\t" << Ne << "\t" << No << "\t" << std::endl;
+			//std::cout <<  theory->m_x << "\t" << Ne << "\t" << No << "\t" << std::endl;
 
 		    PL = +Ne_tot - No*log(Ne_tot) + logfactNo(No);
 			//std::cout << Ne_tot << std::endl;
 		    //Calculate the event-by-event part
+			
+			
+			//-----------------------------------------
+			//return PL;
+			
 		    double eventLike = 0;
 		    for (int i = 0; i < No; i++)
 		    {

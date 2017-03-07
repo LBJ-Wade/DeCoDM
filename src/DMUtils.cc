@@ -342,10 +342,13 @@ double PoissonLike(Detector* expt, ParamSet parameters, double signal_rate (doub
 
   //Calculate expected numbers of events
   double Ne = (expt->m_det)*(expt->exposure)*N_expected(signal_rate, parameters, E1, E2);
-  double Ne_BG = (expt->A_nu)*(expt->m_det)*(expt->exposure)*N_expected(&BGRate,parameters, E1, E2);
-  int ibin = round(expt->N_Ebins*(E1 - expt->E_min)/(expt->E_max - expt->E_min));
-  double Ne_nu = (expt->A_nu)*(expt->neutrino_data)[ibin];
+  double Ne_BG = 0;
+  //double Ne_BG = (expt->A_nu)*(expt->m_det)*(expt->exposure)*N_expected(&BGRate,parameters, E1, E2);
+  //int ibin = round(expt->N_Ebins*(E1 - expt->E_min)/(expt->E_max - expt->E_min));
+  //double Ne_nu = (expt->A_nu)*(expt->neutrino_data)[ibin];
 
+  //std::cout << "Here..." << std::endl;
+  //std::cout << (expt->A_nu)*(expt->neutrino_data)[ibin] << std::endl;
   double Ne_tot = Ne+Ne_BG;
   //Ne_tot += Ne_nu;
 
