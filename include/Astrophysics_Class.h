@@ -41,10 +41,11 @@ class Astrophysics
         int normalise_bins();
         double rescale_bins(int dir);
 
+		std::vector<std::vector<double> > bin_params;
 
         //Poly-exp parametrisation
         double initialise_terms(int N, int dir);
-        double normalise_terms(int dir);
+        double normalise_terms(int dir, double* norms);
 
         //General parameters
         double v_esc;

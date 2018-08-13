@@ -17,7 +17,7 @@
 	double velInt_isotropicPoly(double v,  Astrophysics* astro );
 	double velInt_forwardPoly(double v,  Astrophysics* astro );
 	double velInt_backwardPoly(double v , Astrophysics* astro );
-	
+	double velInt_dirBinned(double v, Astrophysics* astro);
 
 	//double polyf_DIR(double v, void* params);
 
@@ -42,6 +42,8 @@
 		double polyf_ang(double v, Astrophysics* astro, int k);
 		double polyf_total(double v, void* params);
 		double polyfintegrand_total(double v, void* params);
+		double polyf_angint(double v, void* params);
+		double polyf_angnorm(double v, void* params);
 
 	double integrator(double v_q, double integrand (double,void*), Astrophysics* astro);
 

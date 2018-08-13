@@ -1,0 +1,53 @@
+N_isotopes	3
+
+m_1	131
+frac_1	0.212
+J_1	1.5
+Sp_1	-0.038
+Sn_1	-0.242
+N_p_1	54
+N_n_1	77
+
+
+N00_1	0.050
+alpha00_1	3.8
+beta00_1	0.12
+
+N11_1	0.022
+alpha11_1	4.65
+beta11_1	5.15e-2
+
+m_2	129
+frac_2	0.259
+J_2	0.5
+Sp_2	0.046
+Sn_2	0.293
+N_p_2	54
+N_n_2	75
+
+N00_2	0.065
+alpha00_2	3.8
+beta00_2	0.029
+
+N11_2	0.0405
+alpha11_2	4.45
+beta11_2	4e-3
+
+m_3	132.5
+frac_3	0.529
+J_3	0
+
+N_p_3	54
+N_n_3	78
+
+m_det	500
+exposure	365
+E_min	5
+E_max	45
+
+
+BG_level	1e-15
+dE	1e-15
+
+USE_BINNED_DATA	1
+bin_width	1

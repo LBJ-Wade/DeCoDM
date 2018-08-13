@@ -32,6 +32,7 @@ Astrophysics::Astrophysics()
     forward_bin_edges = NULL;
     backward_bin_edges = NULL;
 
+
 }
 
 //-------------------------------------------------
@@ -250,7 +251,7 @@ double Astrophysics::initialise_terms(int N, int dir)
    }
 }
 
-double Astrophysics::normalise_terms(int dir)
+double Astrophysics::normalise_terms(int dir, double* norms)
 {
   //Declare gsl workspace (1000 subintervals)
   gsl_integration_workspace * workspace
@@ -289,22 +290,33 @@ double Astrophysics::normalise_terms(int dir)
 
       double error;
       int status;
-
-      F.function = &polyf_total;
+	  
+	  double totalnorm = 0;	
+		
+      F.function = &polyf_angnorm;
       F.params = this;
 
-      status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm, &error);
-
-      if (status ==  GSL_EROUND)
-      {
-	    std::cout << "GSL rounding error!" << std::endl;
-	    std::cout << norm << std::endl;
-      }
+	  for (int k = 0; k < N_ang; k++)
+	  {
+		 norm = 0;
+		j_bin = k;
+	  	status = gsl_integration_qag(&F,0,1000, 0, 1e-6, 3000,6,workspace, &norm, &error);
+        if (status ==  GSL_EROUND)
+        {
+  	    std::cout << "GSL rounding error!" << std::endl;
+  	    std::cout << norm << std::endl;
+        }
+		norms[k] = norm;
+		totalnorm += norm;
+	  }
 	  
 	  //This is a strangely fixed normalisation!
 	  for (int k = 0; k < N_ang; k++)
 	  {
-		  vel_params_ang[k][0] += log(N_ang*norm*(cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)));
+		  //vel_params_ang[k][0] += log(N_ang*norm*(cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)));
+		  norms[k] = norms[k]/totalnorm;
+		  //vel_params_ang[k][0] += log(2*totalnorm*(cos(PI*(k)/N_ang) - cos(PI*(k+1.0)/N_ang)));
+		  vel_params_ang[k][0] += log(totalnorm);
 	  }
 	  
       //Free workspace

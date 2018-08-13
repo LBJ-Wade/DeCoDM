@@ -10,6 +10,13 @@ class Particlephysics
         double m_x;
         double sigma_SI;
         double sigma_SD;
+		
+		double lambda_p_D;
+		double lambda_n_D;
+		
+		double lambda_p_Dbar;
+		double lambda_n_Dbar;
+		
 		double sigma_O5;
 		double sigma_O7;
 		double sigma_O15;
@@ -40,6 +47,12 @@ class Particlephysics
 	{
 		m_x = 100;
 		sigma_SI = 0;
+		sigma_SD = 0;
+		lambda_p_D = 0;
+		lambda_n_D = 0;
+		lambda_p_Dbar = 0;
+		lambda_n_Dbar = 0;
+		
 		sigma_SD = 0;
 		sigma_O5 = 0;
 		sigma_O7 = 0;

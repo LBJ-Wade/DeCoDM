@@ -1,33 +1,11 @@
-
-#Need to install GSL
-
-#Need to install fftw3 - only necessary for Radon transform codes
-
-#Really should add in some compiler options to compile with or without Radon/DarkSUSY
-
-#Need to install lapack and lablas for GSL??
-#Check to see if I actually need lapack and lablas - doesn't look like I need GSL
-
-#MAY need to install DarkSUSY
-
+CXX=g++
 # Declaration of variables
-FC = gfortran
-F_FLAGS = -O3
-
-C = gcc
-C_FLAGS = -O3 -w 
-
-CC = clang++
-CC_FLAGS = -O3 -Wall -arch x86_64 -v
-
-#Use fftw3
-USE_RADON = FALSE
-USE_ICECUBE = FALSE
-
+CC = g++
+CC_FLAGS = -O3 -Wall
 #-I../cosmomc/source
 
-#TARGET_DIR = /home/ppxbk2/astroraid/cosmomc/source
-#TARGET_DIR = ../test
+USE_RADON = FALSE
+USE_ICECUBE = FALSE
 
 TARGET_TEST = ../test
 TARGET_GENERATE = ..
@@ -77,6 +55,7 @@ endif
 
 
 
+
 # File names
 EXEC = run
 SOURCES = $(*.cc)
@@ -120,7 +99,7 @@ GenerateEvents: $(OBJ_FILES)
 	$(CC) $(CC_FLAGS) $(INCLUDE) $(LIBS) -o GenerateEvents $^ GenerateEvents_main.cc $(LD_FLAGS)
 	cp GenerateEvents $(TARGET_GENERATE)
 	cp GenerateEvents $(TARGET_TEST)
-	cp GenerateEvents /Users/bradkav/Projects/Antiparticle/WIMPfit
+	cp GenerateEvents /Users/bradkav/Projects/DirectionalDetailed/DirFit
 	rm GenerateEvents
 
 GenerateEvents_IC: $(OBJ_FILES)

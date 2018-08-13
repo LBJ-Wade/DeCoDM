@@ -11,6 +11,8 @@
 #include "ParamSet_Class.h"
 
 #include "gsl/gsl_sf.h"
+#include "gsl/gsl_interp.h"
+#include "gsl/gsl_spline.h"
 
 #ifndef PI
   #define PI 3.14159265358
@@ -102,6 +104,7 @@ Detector::Detector(std::string filename)
 	beta.push_back(0);
 	beta.push_back(0);
       }
+	  ifs.close();
     }
 
 
@@ -135,7 +138,7 @@ Detector::Detector(std::string filename)
   //Calculate bin edges if required
   if (bin_width > 1e-3)
   {
-	  std::cout << "Warning [Detector_Class.cc]: binned data may be buggy..." << std::endl;
+	  //std::cout << "Warning [Detector_Class.cc]: binned data may be buggy..." << std::endl;
     bin_edges.clear();
    double E = E_min;
    while (E <= E_max)
@@ -165,6 +168,8 @@ Detector::Detector(std::string filename)
     //}
     //std::cout << std::endl;
 	
+	if (INCLUDE_NU)
+	{
 	//Load neutrino data
 	A_nu = 1.0;
 	ParamSet parameters(this,NULL, NULL);
@@ -182,10 +187,40 @@ Detector::Detector(std::string filename)
 		//std::cout << neutrino_data[i] << std::endl;
     }
 	ClearFluxTable();
+}
 	//std::cout << "Total number of neutrino scattering events is " <<  total_N << std::endl;
 
 
   }
+//Load in the efficiency table
+  int read_eff = 0;
+  if (read_eff)
+  {
+	std::cout << "Loading in the efficiency table..." << std::endl;
+	  //Read in nuclear response function parameters
+
+		std::ifstream eff_fs("Efficiency-LUX.txt");
+	if (eff_fs.is_open())
+	{
+		double Eval, effval;
+		while (eff_fs >> Eval >> effval)
+		{
+			eff_E.push_back(Eval);
+			eff_eta.push_back(effval);
+		}
+		eff_fs.close();
+	
+		//for (int i = 0; i < 50; i++)
+		//{
+		//		std::cout << eff_E[i] << "\t" << eff_eta[i] << std::endl;
+		//}		
+			
+	}
+	else
+	{
+		std::cout << " Warning [Detector_Class.cc]: Efficiency file not found..." << std::endl;
+	}
+	}
 }
 
 //------------------------------------------
@@ -207,12 +242,13 @@ void Detector::bin_data()
 //--------------------------------------------
 void Detector::angular_bin_data(int N_ang_bins)
 {
+	std::cout << " Binning angular data..." << std::endl;
 	std::vector<Event> data1;
 	for (int i = 0; i < N_ang_bins; i++)
 	{
 		data1.clear();
-		double theta1 = PI*(i - 1.0)/N_ang_bins;
-		double theta2 = PI*(i)*1.0/N_ang_bins;
+		double theta1 = PI*(i)/N_ang_bins;
+		double theta2 = PI*(i+1)*1.0/N_ang_bins;
 		for (int j = 0; j < data.size(); j++)
 		{
 			if ((data[j].theta > theta1)&&(data[j].theta < theta2))
@@ -220,8 +256,11 @@ void Detector::angular_bin_data(int N_ang_bins)
 				data1.push_back(data[j]);
 			}	
 		}
+		std::cout << "\t k = " << (i+1) << ": " << data1.size() << " events" << std::endl;
 		data_ang.push_back(data1);
 	}
+	std::cout << " Finished binning angular data..." << std::endl;
+
 	
 }
 
@@ -552,8 +591,20 @@ void Detector::print_data(std::string filename)
 
 double Detector::efficiency(double E)
 {
+	if (E <= 1.1) return 0;
+	if (E >= 60.0) return 0;
+	
+	double dlE = (log10(70) - log10(1.1))/49.0;
+	
+	double lE = log10(E);
+	int i = floor((lE - log10(1.1))/dlE);
+	
+	double leta = eff_eta[i] + (lE - eff_E[i])*(eff_eta[i+1]-eff_eta[i])/dlE;
+	
+	//std::cout << pow(10.0,leta) << std::endl;
 	//return 0.29*pow(log10(E-6.0),0.9);
-	return 1;
+	//return 1;
+	return pow(10.0,leta);
 }
 
 void Detector::load_data(std::string filename)

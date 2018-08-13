@@ -193,11 +193,13 @@ double LoadFluxTable()
 		free(E_range);
 		free(N_flux);
 	    file.close();
+		return 1;
 		
     }
 	else
 	{
 		std::cout << "Neutrino file - 'data/NeutrinoSpectrum.txt' - not found..." << std::endl;
+		return 0;
 	}
 }
 
