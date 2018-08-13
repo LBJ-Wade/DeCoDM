@@ -173,7 +173,7 @@ void generateEvents(Detector* expt, Particlephysics* ptheory)
  
   //BJK!!!
   //This should only be used for m_x = 50 or m_x = 1000
-  double xsec_target
+  double xsec_target;
   if (ptheory->m_x < 100)
   {
 	  xsec_target = 1e-46;
